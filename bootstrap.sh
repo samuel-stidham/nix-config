@@ -39,18 +39,56 @@ apply_home() {
   nix run home-manager/master -- switch --flake "$FLAKE_DIR#$HM_TARGET"
 }
 
+fish_login_shell() {
+  log "fish as login shell"
+  # home-manager installs fish into the user profile. Make that the login shell,
+  # so terminals and TTYs use the Nix fish, not an apt one. The apt fish and its
+  # PPA are intentionally absent, see .agents/outside-nix.md. Must run after
+  # apply_home, since the profile fish has to exist first.
+  local nix_fish="$HOME/.nix-profile/bin/fish"
+  if [ ! -x "$nix_fish" ]; then
+    echo "Nix fish not found at $nix_fish. Run apply_home first."
+    return 1
+  fi
+  # Register it as a valid login shell, once.
+  grep -qxF "$nix_fish" /etc/shells || echo "$nix_fish" | sudo tee -a /etc/shells >/dev/null
+  # Set it as this user's login shell.
+  sudo chsh -s "$nix_fish" "$USER"
+  # Expose it at the conventional path, so any hardcoded #!/usr/bin/fish shebang
+  # still resolves. This symlink is not apt-owned, since the apt fish is purged.
+  sudo ln -sf "$nix_fish" /usr/bin/fish
+}
+
 apt_system() {
   log "apt system layer"
-  # The system layer that must stay on apt. See .agents/outside-nix.md.
+  # Extra system-layer packages that a fresh Ubuntu install does not already
+  # include. The HWE kernel and the desktop environment come with the ISO, so
+  # they are not listed here. That keeps this DE-agnostic. See
+  # .agents/outside-nix.md.
+  #
+  # Docker is not in the default Ubuntu repos, so add Docker's apt repo.
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+    | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+  # steam-launcher and virtualbox live in the multiverse component.
+  sudo add-apt-repository -y multiverse
+
   sudo apt update
   sudo apt install -y \
-    linux-generic-hwe-24.04 nvidia-driver-590-open \
-    cinnamon-desktop-environment ubuntucinnamon-desktop \
-    docker-ce docker-compose-plugin openssh-server \
+    docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+    openssh-server linux-headers-generic-hwe-24.04 \
     virtualbox virtualbox-dkms \
     steam-launcher \
     libfuse2t64 xdg-desktop-portal-gtk \
     mit-scheme
+
+  # NVIDIA driver, picked automatically for the installed GPU. This survives a
+  # release upgrade better than a pinned version.
+  sudo ubuntu-drivers autoinstall
 }
 
 vendor_debs() {
@@ -73,17 +111,12 @@ vendor_debs() {
 flatpaks() {
   log "Flatpak apps"
   flatpak remote-add --if-not-exists --user flathub https://flathub.org/repo/flathub.flatpakrepo
+  # Bruno, Obsidian, Spotify, KeePassXC, and Halloy moved to Nix, see
+  # home/apps.nix. Only pure desktop apps stay on Flatpak here.
   flatpak install -y --user flathub \
     com.github.tchx84.Flatseal \
-    com.usebruno.Bruno \
-    md.obsidian.Obsidian \
-    com.spotify.Client \
-    org.keepassxc.KeePassXC \
-    org.squidowl.halloy \
     com.calibre_ebook.calibre \
     org.gimp.GIMP \
-    io.github.Hexchat \
-    im.pidgin.Pidgin \
     org.prismlauncher.PrismLauncher
   echo "If PrismLauncher runs from Flatpak, grant it the Nix JDK folder with Flatseal:"
   echo "  filesystem access to ~/.local/share/jdks"
@@ -116,6 +149,7 @@ savvy() {
 all() {
   install_nix
   apply_home
+  fish_login_shell
   apt_system
   vendor_debs
   flatpaks

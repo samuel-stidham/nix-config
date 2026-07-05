@@ -7,8 +7,10 @@
 #
 # This module also takes over the global git config, so the gitleaks pre-commit
 # hook can be set through core.hooksPath. It replicates the current ~/.gitconfig
-# faithfully, so no identity or signing setting regresses. This advances the git
-# config half of the ssh-git-identity phase. The ssh matchBlocks come later.
+# faithfully, so no identity or signing setting regresses, and it inlines the
+# snhu email override so ~/.gitconfig and ~/.gitconfig-snhu are no longer needed.
+# It also manages ~/.ssh/config through settings, one block per GitHub identity.
+# The private keys are never in any repo. This completes the ssh-git-identity phase.
 
 {
   home.packages = with pkgs; [
@@ -53,11 +55,38 @@
       init.defaultBranch = "main";
       core.hooksPath = "${config.xdg.configHome}/git/hooks";
     };
-    # Directory-tree identity. snhu email under snhu-projects, and the nix-config
-    # override that already lives in the current config.
+    # Directory-tree identity. Under snhu-projects and nix-config, override the
+    # email to the snhu address. Using contents instead of a path means
+    # home-manager generates the included file itself, so no hand-written
+    # ~/.gitconfig-snhu is needed and the identity is fully declarative.
     includes = [
-      { condition = "gitdir:~/code/snhu-projects/"; path = "~/.gitconfig-snhu"; }
-      { condition = "gitdir:~/nix-config/"; path = "~/.gitconfig-snhu"; }
+      { condition = "gitdir:~/code/snhu-projects/"; contents.user.email = "samuel.stidham@snhu.edu"; }
+      { condition = "gitdir:~/nix-config/"; contents.user.email = "samuel.stidham@snhu.edu"; }
     ];
+  };
+
+  # SSH host aliases, managed. github.com uses the personal key, github.com-snhu
+  # uses the snhu key. IdentitiesOnly makes each host offer only its own key, so
+  # they never cross. The config is managed here, the private keys never are.
+  programs.ssh = {
+    enable = true;
+    # We declare exactly the hosts we need, so no implicit Host * defaults.
+    enableDefaultConfig = false;
+    # settings replaces the deprecated matchBlocks. Keys are Host patterns, and
+    # the values use raw ssh_config directive names.
+    settings = {
+      "github.com" = {
+        HostName = "github.com";
+        User = "git";
+        IdentityFile = "~/.ssh/id_ed25519_github_personal";
+        IdentitiesOnly = true;
+      };
+      "github.com-snhu" = {
+        HostName = "github.com";
+        User = "git";
+        IdentityFile = "~/.ssh/id_ed25519_snhu";
+        IdentitiesOnly = true;
+      };
+    };
   };
 }

@@ -13,6 +13,7 @@
     ./fonts.nix
     ./terminals.nix
     ./secrets.nix
+    ./steam.nix
   ];
 
   home.username = "samuelstidham";
@@ -23,4 +24,10 @@
   home.stateVersion = "24.11";
 
   programs.home-manager.enable = true;
+
+  # Non-NixOS integration. Wires XDG_DATA_DIRS so Nix .desktop files, icons, and
+  # mime types are picked up by the Cinnamon menu, not just the shell. Only takes
+  # full effect for the graphical session once ~/.profile also includes the Nix
+  # profile share, since the display manager reads ~/.profile.
+  targets.genericLinux.enable = true;
 }

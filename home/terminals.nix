@@ -12,9 +12,11 @@ in
   # This replaces the apt ghostty, so it is removed from apps.nix. The package is
   # listed once in home.packages at the bottom, alongside rmux.
   xdg.configFile."ghostty/config".text = ''
-    theme = catppuccin-frappe
+    theme = Catppuccin Frappe
     font-family = ${nerdFont}
     font-size = 12
+    # Do not flash the "cols x rows" box on every resize.
+    resize-overlay = never
     # Shift+Enter sends a newline (LF), so multiline input works in Claude Code
     # and other apps. Plain Enter still submits.
     keybind = shift+enter=text:\n

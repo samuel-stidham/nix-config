@@ -27,5 +27,20 @@
     # languages.nix. mgfxc needs Wine on Linux, and Nix provides it here. Set
     # MGFXC_WINE_PATH to this wine once built. See MIGRATION.md for the steps.
     wineWow64Packages.stable
+
+    # GUI apps moved off snaps to Nix during de-snap. Versions are newer or on
+    # par with the snaps they replace, so exact-version matching is not needed.
+    bruno                  # API client
+    eclipses.eclipse-java  # Eclipse IDE for Java
+    ghidra                 # reverse engineering
+    halloy                 # IRC client
+    keepassxc              # password manager
+    obsidian               # notes, Electron and unfree
+    racket                 # Racket language and DrRacket
+    spotify                # music, Electron and unfree
+
+    # PrismLauncher from Nix, so it reads the Nix JDKs under ~/.local/share/jdks
+    # directly with no Flatpak sandbox grant. Replaces the apt prismlauncher.
+    prismlauncher
   ];
 }
