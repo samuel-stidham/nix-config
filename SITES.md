@@ -66,10 +66,21 @@ folder in `~/sites`.
 secure_sites          # secure every ~/sites/<name> as <name>.test
 ```
 
-Run it after adding a site, or once a year to renew. Re-running overwrites. Plain
-HTTP on port 80 works whether or not a cert exists. HTTPS works for a site once
-its cert is generated. The certs are self-signed, so a browser shows a warning
-until you trust the cert or import it. That is expected for local dev.
+Run it after adding a site, or once a year to renew. Re-running overwrites.
+
+Once a site has a cert, nginx forces a 301 redirect from HTTP to HTTPS for that
+host. A site with no cert still serves over plain HTTP, so unsecured sites are
+not broken. The certs are self-signed, so a browser shows a warning until you
+trust or import the cert. That is expected for local dev.
+
+### Xdebug
+
+Xdebug 3 is configured on the shared PHP build, so it works in the CLI and behind
+nginx. It uses port 9003, not the old 9000 that clashed with php-fpm and MinIO.
+The mode is `develop,debug` with `start_with_request = trigger`, so there is no
+overhead until you start a session. Point your IDE debug listener at
+`127.0.0.1:9003`, and trigger a session with the usual `XDEBUG_TRIGGER` cookie,
+query parameter, or environment variable.
 
 ### PHP timezone
 

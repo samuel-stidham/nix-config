@@ -21,8 +21,19 @@ pkgs.php85.buildEnv {
   # date.timezone applies to every SAPI built from this php, so the CLI and the
   # php-fpm behind nginx share it. Store all datetimes as UTC in the database and
   # let this timezone drive display and offset math.
+  #
+  # Xdebug 3 uses port 9003, not the old 9000 that clashed with php-fpm and
+  # MinIO. Trigger mode means no overhead until you start a session, so it is
+  # safe to leave on. Point your IDE listener at 127.0.0.1:9003.
   extraConfig = ''
     memory_limit = 512M
     date.timezone = America/Kentucky/Monticello
+
+    [xdebug]
+    xdebug.mode = develop,debug
+    xdebug.client_host = 127.0.0.1
+    xdebug.client_port = 9003
+    xdebug.start_with_request = trigger
+    xdebug.discover_client_host = false
   '';
 }

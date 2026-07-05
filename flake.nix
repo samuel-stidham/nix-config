@@ -56,6 +56,33 @@
           # Prefer public/ (Laravel, Symfony 4+, Bedrock), then web/ (Symfony 2/3,
           # older Drupal), else the site root (WordPress, plain PHP, static HTML).
           # index.php is the front controller, static falls through to index.html.
+          # Shared serving logic, included by both the HTTP and HTTPS server
+          # blocks. The driver picks the document root, and php runs over the
+          # php-fpm socket.
+          siteBody = pkgs.writeText "nginx-site-body.conf" ''
+            set $base ${siteRoot}/$site;
+            set $sroot $base;
+            if (-d $base/public) { set $sroot $base/public; }
+            if (-d $base/web)    { set $sroot $base/web; }
+            root $sroot;
+
+            index index.php index.html index.htm;
+            charset utf-8;
+
+            location / {
+              try_files $uri $uri/ /index.php?$query_string;
+            }
+            location ~ \.php$ {
+              fastcgi_pass unix:${runDir}/php-fpm/php-fpm.sock;
+              fastcgi_index index.php;
+              include ${pkgs.nginx}/conf/fastcgi_params;
+              fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+              fastcgi_param PATH_INFO $fastcgi_path_info;
+              fastcgi_param HTTPS $https if_not_empty;
+            }
+            location ~ /\.(?!well-known).* { deny all; }
+          '';
+
           nginxConf = pkgs.writeText "nginx-dev.conf" ''
             daemon off;
             pid ${runDir}/nginx/nginx.pid;
@@ -71,38 +98,25 @@
               uwsgi_temp_path ${runDir}/nginx/tmp/uwsgi;
               scgi_temp_path ${runDir}/nginx/tmp/scgi;
 
+              # HTTP. If secure_sites has made a cert for this host, force a 301 to
+              # HTTPS. Otherwise serve over HTTP, so unsecured sites still work.
               server {
                 listen 80;
+                server_name ~^(?<site>.+)\.test$;
+                if (-f ${runDir}/certs/$host.crt) {
+                  return 301 https://$host$request_uri;
+                }
+                include ${siteBody};
+              }
+
+              # HTTPS. Per-site self-signed cert picked by SNI.
+              server {
                 listen 443 ssl;
                 server_name ~^(?<site>.+)\.test$;
-
-                # Per-site self-signed certs from the secure_sites fish function,
-                # picked by SNI. HTTPS works once secure_sites has run for a site.
-                # Plain HTTP on 80 works regardless of whether a cert exists.
                 ssl_certificate ${runDir}/certs/$ssl_server_name.crt;
                 ssl_certificate_key ${runDir}/certs/$ssl_server_name.key;
                 ssl_protocols TLSv1.2 TLSv1.3;
-
-                set $base ${siteRoot}/$site;
-                set $sroot $base;
-                if (-d $base/public) { set $sroot $base/public; }
-                if (-d $base/web)    { set $sroot $base/web; }
-                root $sroot;
-
-                index index.php index.html index.htm;
-                charset utf-8;
-
-                location / {
-                  try_files $uri $uri/ /index.php?$query_string;
-                }
-                location ~ \.php$ {
-                  fastcgi_pass unix:${runDir}/php-fpm/php-fpm.sock;
-                  fastcgi_index index.php;
-                  include ${pkgs.nginx}/conf/fastcgi_params;
-                  fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-                  fastcgi_param PATH_INFO $fastcgi_path_info;
-                }
-                location ~ /\.(?!well-known).* { deny all; }
+                include ${siteBody};
               }
             }
           '';
