@@ -36,6 +36,9 @@
     obsidian               # notes, Electron and unfree
     racket                 # Racket language and DrRacket
     spotify                # music, Electron and unfree
+    # TablePlus is NOT here: the nixpkgs build lags the vendor release, so it
+    # comes from TablePlus's own apt repo in bootstrap.sh (vendor_debs), like
+    # Chrome and VS Code.
 
     # PrismLauncher from Nix, so it reads the Nix JDKs under ~/.local/share/jdks
     # directly with no Flatpak sandbox grant. Replaces the apt prismlauncher.

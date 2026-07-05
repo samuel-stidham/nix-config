@@ -158,8 +158,13 @@ vendor_debs() {
   # VS Code
   wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
   echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list
+  # TablePlus. nixpkgs lags the vendor release, so it comes from here. The repo
+  # path tracks the Ubuntu major version, so it follows the 24 -> 26 upgrade.
+  ubu_major="$(. /etc/os-release && echo "${VERSION_ID%%.*}")"
+  wget -qO- https://deb.tableplus.com/apt.tableplus.com.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/tableplus.gpg
+  echo "deb [arch=amd64 signed-by=/usr/share/keyrings/tableplus.gpg] https://deb.tableplus.com/debian/${ubu_major} tableplus main" | sudo tee /etc/apt/sources.list.d/tableplus.list
   sudo apt update
-  sudo apt install -y google-chrome-stable code
+  sudo apt install -y google-chrome-stable code tableplus
   echo "Add 1password, discord, claude-desktop, signal, brave, slack from their vendor repos."
 }
 

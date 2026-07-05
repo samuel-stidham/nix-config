@@ -57,5 +57,16 @@
 
     # Plotting used by octave and quick scripts.
     gnuplot
+
+    # Document conversion. pandoc converts between most doc formats natively
+    # (md, docx, odt, epub, html, rst, org, ...). The extras cover what it shells
+    # out to: typst is a self-contained PDF engine (pandoc --pdf-engine=typst),
+    # librsvg renders SVG images into PDF/docx, imagemagick handles image format
+    # conversions. LaTeX-based PDF (--pdf-engine=xelatex) uses the existing
+    # /usr/local/texlive install, see .agents/outside-nix.md.
+    pandoc
+    typst
+    librsvg
+    imagemagick
   ];
 }
