@@ -16,13 +16,13 @@ step. Do not skip the history scan.
 
 3. Run the fast full-history scan with gitleaks:
 
-   ```
+   ```bash
    gitleaks git --redact .
    ```
 
 4. Run the verified deep scan with trufflehog:
 
-   ```
+   ```bash
    trufflehog git file://.
    ```
 
@@ -34,7 +34,7 @@ step. Do not skip the history scan.
 6. Confirm the git identity resolves as expected in the repo, so the public
    history carries the right name and email:
 
-   ```
+   ```bash
    git config user.email
    git config user.signingkey
    ```

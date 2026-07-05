@@ -75,7 +75,7 @@ The `.envrc` pattern is one line per secret. direnv exports it for that shell
 only, and nothing lands in a file. Run `direnv allow` once per project to trust
 its `.envrc`.
 
-```
+```bash
 # .envrc in a project that needs the Forgejo token
 export FORGEJO_TOKEN="$(passage show forgejo/token)"
 ```
@@ -137,7 +137,7 @@ with the SSH keys you already have.
 
 In `~/nix-config`, confirm the resolved identity before the first push:
 
-```
+```bash
 git -C ~/nix-config config user.email      # expect samuel.stidham@snhu.edu
 git -C ~/nix-config config user.signingkey # expect the snhu ssh key
 ```

@@ -8,7 +8,7 @@ these.
 
 ## The services stack
 
-```
+```bash
 nix run ~/nix-config#services
 ```
 
@@ -29,7 +29,7 @@ swap to real S3 or RustFS in production through config alone. The console is on
 
 ## The sites stack
 
-```
+```bash
 nix run ~/nix-config#sites
 ```
 
@@ -62,7 +62,7 @@ The sites nginx also listens on 443. It picks a per-site certificate by SNI from
 `secure_sites` fish function, which makes a one-year self-signed cert for every
 folder in `~/sites`.
 
-```
+```bash
 secure_sites          # secure every ~/sites/<name> as <name>.test
 ```
 
@@ -97,7 +97,7 @@ so run them yourself with sudo. They are safe to leave in place.
 First, let a user process bind port 80, so nginx does not need root. This lowers
 the unprivileged port floor to 80.
 
-```
+```bash
 echo 'net.ipv4.ip_unprivileged_port_start=80' | sudo tee /etc/sysctl.d/99-unprivileged-port-start.conf
 sudo sysctl --system
 ```
@@ -105,7 +105,7 @@ sudo sysctl --system
 Second, route `.test` lookups to the stack's dnsmasq on `127.0.0.1:5333`. dnsmasq
 runs on 5333 to avoid the mDNS port 5353.
 
-```
+```bash
 sudo mkdir -p /etc/systemd/resolved.conf.d
 printf '[Resolve]\nDNS=127.0.0.1:5333\nDomains=~test\n' | sudo tee /etc/systemd/resolved.conf.d/test.conf
 sudo systemctl restart systemd-resolved
@@ -113,7 +113,7 @@ sudo systemctl restart systemd-resolved
 
 Verify after the sites stack is running.
 
-```
+```bash
 resolvectl query myapp.test      # expect 127.0.0.1
 curl -I http://myapp.test        # expect a response from nginx
 ```
@@ -126,7 +126,7 @@ is running, since dnsmasq only answers while the sites stack is up.
 
 Remove the two files and restart resolved to undo the system setup.
 
-```
+```bash
 sudo rm /etc/sysctl.d/99-unprivileged-port-start.conf /etc/systemd/resolved.conf.d/test.conf
 sudo sysctl --system
 sudo systemctl restart systemd-resolved

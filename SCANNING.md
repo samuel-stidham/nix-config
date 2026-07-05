@@ -28,7 +28,7 @@ replaced the old `protect` and `detect` commands with `git`, `dir`, and `stdin`.
 The `--staged`, `--redact`, and `--no-banner` flags all exist in 8.30.1, so the
 hook command is:
 
-```
+```bash
 gitleaks git --staged --redact --no-banner
 ```
 
@@ -53,7 +53,7 @@ The allowlist holds patterns, never a secret value.
 Before any repo flips public, run both tools over the full history. Record the
 results. The commands are:
 
-```
+```bash
 gitleaks git --redact .        # fast full-history scan
 trufflehog git file://.        # verified scan, tests whether a find is still live
 ```
