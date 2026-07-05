@@ -1,0 +1,28 @@
+# gitleaks allowlist for this machine's repos.
+#
+# This extends the default gitleaks rules rather than replacing them, so real
+# detections still fire. It only quiets known-safe patterns: passage reference
+# paths and age recipient strings. It holds patterns, never a secret value.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow passage references and age recipients, not secret values"
+
+# passage reference paths, for example forgejo/token, are safe references.
+# .envrc lines resolve them at shell entry, they are not values.
+regexes = [
+  '''passage show [a-z0-9_./-]+''',
+  # age recipient public keys are not secrets. The age private identity never
+  # enters a repo, so only the public recipient could appear, and it is safe.
+  '''age1[0-9a-z]{58}''',
+]
+
+# Files that are references or docs by design, not secret stores.
+paths = [
+  '''\.envrc''',
+  '''SECRETS\.md''',
+  '''SCANNING\.md''',
+  '''PUBLISHING\.md''',
+]
