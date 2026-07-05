@@ -64,3 +64,16 @@ function update_ssh_auth_sock
         eval (ssh-agent -c)
     end
 end
+
+function servers --description 'Open the dev-servers zellij layout'
+    # -n / --new-session-with-layout starts a NEW zellij session with a layout
+    # (home/terminals.nix). Plain --layout without -n tries to add a tab to an
+    # existing session instead, which is why "--session X --layout Y" failed with
+    # "There is no active session". This opens a fresh session each run, so quit a
+    # running one first or its stacks collide (visibly, since close_on_exit=false).
+    if set -q ZELLIJ
+        echo "You're inside zellij already; run this from a plain terminal."
+        return 1
+    end
+    zellij -n servers --layout servers
+end

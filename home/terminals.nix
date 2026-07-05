@@ -17,6 +17,8 @@ in
     font-size = 12
     # Do not flash the "cols x rows" box on every resize.
     resize-overlay = never
+    # Ghostty's own (GTK) tabs along the bottom.
+    gtk-tabs-location = bottom
     # Shift+Enter sends a newline (LF), so multiline input works in Claude Code
     # and other apps. Plain Enter still submits.
     keybind = shift+enter=text:\n
