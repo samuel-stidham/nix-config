@@ -15,6 +15,9 @@ in
     theme = catppuccin-frappe
     font-family = ${nerdFont}
     font-size = 12
+    # Shift+Enter sends a newline (LF), so multiline input works in Claude Code
+    # and other apps. Plain Enter still submits.
+    keybind = shift+enter=text:\n
   '';
 
   # Alacritty. Font here, colors from the catppuccin module.

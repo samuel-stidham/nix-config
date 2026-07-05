@@ -31,7 +31,12 @@
   programs.bat.enable = true;
   catppuccin.bat.enable = true;
 
-  programs.fzf.enable = true;
+  # atuin owns Ctrl-R for history search, since that is its whole point. Disable
+  # fzf's Ctrl-R binding so they do not fight. fzf keeps Ctrl-T and Alt-C.
+  programs.fzf = {
+    enable = true;
+    historyWidget.fish.command = "";
+  };
   catppuccin.fzf.enable = true;
 
   # Nicer ls.

@@ -39,16 +39,17 @@
   # command for on-demand scans in any repo. See ../SCANNING.md.
   programs.git = {
     enable = true;
-    userName = "Samuel Stidham";
-    userEmail = "dqfan2012@gmail.com";
-    # Current signing is GPG key 693484A30BCFADFA with sign by default. Kept as
-    # is, so nothing regresses. Whether to move to SSH signing per identity is a
-    # decision for the ssh-git-identity phase, see ../SECRETS.md.
-    signing = {
-      key = "693484A30BCFADFA";
-      signByDefault = true;
-    };
-    extraConfig = {
+    # New home-manager schema. user, commit, init, and core all live under
+    # settings now. Signing is GPG key 693484A30BCFADFA with sign by default,
+    # kept as is so nothing regresses. Whether to move to SSH signing per
+    # identity is a decision for the ssh-git-identity phase, see ../SECRETS.md.
+    settings = {
+      user = {
+        name = "Samuel Stidham";
+        email = "dqfan2012@gmail.com";
+        signingkey = "693484A30BCFADFA";
+      };
+      commit.gpgsign = true;
       init.defaultBranch = "main";
       core.hooksPath = "${config.xdg.configHome}/git/hooks";
     };

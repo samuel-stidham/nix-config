@@ -15,12 +15,24 @@ let
   # (clang 21.1.8) here if a newer compiler ever breaks a build.
   gccPinned = pkgs.gcc16;
   llvmPinned = pkgs.llvmPackages_22;
+
+  # gcc and clang both ship generic `cc`, `c++`, and `cpp` names, which collide
+  # in the profile. buildEnv priority did not resolve it here, so give clang its
+  # own copy with those three generic names removed. gcc then owns `cc`, `c++`,
+  # and `cpp`, and clang stays available as `clang` and `clang++`.
+  clangNoGeneric = pkgs.symlinkJoin {
+    name = "clang-${llvmPinned.clang.version}-nogeneric";
+    paths = [ llvmPinned.clang ];
+    postBuild = ''
+      rm -f "$out/bin/cc" "$out/bin/c++" "$out/bin/cpp"
+    '';
+  };
 in
 {
   home.packages = with pkgs; [
     # C and C++ (c-projects, cpp-projects). Pinned per Step 6.
     gccPinned
-    llvmPinned.clang
+    clangNoGeneric
     llvmPinned.lld
     llvmPinned.lldb
 
@@ -31,7 +43,6 @@ in
     golangci-lint     # confirmed 2.12.2
     gofumpt           # confirmed 0.10.0
     go-tools          # staticcheck, confirmed 2026.1
-    gotools           # goimports and friends, confirmed 0.44.0
     gosec             # confirmed 2.27.1
     govulncheck       # confirmed 1.5.0
     gotests           # confirmed 1.9.0
@@ -56,9 +67,10 @@ in
     shards
 
     # Elixir and Erlang. No project folder, but both are installed and used.
-    # Confirmed elixir 1.18.4 on erlang OTP 28.5.0.2.
-    elixir
-    erlang
+    # Confirmed elixir 1.18.4 on erlang OTP 28.5.0.2. The top-level attrs are
+    # deprecated, so use the beamPackages set.
+    beamPackages.elixir
+    beamPackages.erlang
 
     # Clojure. sdkman managed leiningen, which means you use Clojure. Confirmed
     # clojure 1.12.5 and leiningen 2.12.0. Both ride on the default JDK from
@@ -99,10 +111,10 @@ in
     php
     php.packages.composer
 
-    # Ruby (ruby-projects, rails-projects). Replaces apt ruby and rbenv. Gems
-    # install per project through bundler.
+    # Ruby (ruby-projects, rails-projects). Replaces apt ruby and rbenv. ruby
+    # already ships bundler, so no separate bundler package. Gems install per
+    # project through bundler.
     ruby
-    bundler
 
     # C# and .NET (csharp-projects). Run 8, 9, and 10 side by side, matching the
     # three SDKs the apt backports PPA installed. Confirmed 8.0.422, 9.0.315,
@@ -116,7 +128,9 @@ in
     # Lua and LÖVE (lua-projects, love-projects). Confirmed lua5_5 is 5.5.0,
     # which matches your source build. luajit covers the apt libluajit usage.
     lua5_5
-    luajit
+    # luajit CLI dropped. You had none installed, its headers collide with
+    # lua5_5, LOVE bundles its own, and the apt libluajit for plugins stays on
+    # apt. Add it back isolated if you ever need the standalone luajit.
     love
 
     # TeXstudio. Confirmed 4.9.5. It has no language folder. It is a GUI app, so
