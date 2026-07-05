@@ -24,5 +24,32 @@
       source $HOME/fish/aliases.fish
       source $HOME/fish/functions.fish
     '';
+
+    # secure_sites generates a one-year self-signed TLS cert for every folder in
+    # ~/sites, named <folder>.test, into the certs dir the sites nginx reads.
+    # Run it after adding a site, or yearly to renew. Re-run overwrites.
+    functions.secure_sites = ''
+      set -l certdir "$HOME/.local/share/dev-services/certs"
+      mkdir -p $certdir
+      if not test -d "$HOME/sites"
+        echo "no ~/sites folder, nothing to secure"
+        return 1
+      end
+      set -l count 0
+      for dir in $HOME/sites/*/
+        test -d "$dir"; or continue
+        set -l name (basename "$dir")
+        set -l host "$name.test"
+        if openssl req -x509 -newkey rsa:2048 -sha256 -days 365 -nodes \
+            -keyout "$certdir/$host.key" -out "$certdir/$host.crt" \
+            -subj "/CN=$host" -addext "subjectAltName=DNS:$host" 2>/dev/null
+          echo "secured $host for one year"
+          set count (math $count + 1)
+        else
+          echo "FAILED $host"
+        end
+      end
+      echo "$count site(s) secured in $certdir"
+    '';
   };
 }

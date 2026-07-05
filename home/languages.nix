@@ -28,27 +28,9 @@ let
     '';
   };
 
-  # PHP 8.5 with a curated, non-conflicting extension set. Confirmed php85 is
-  # 8.5.7. This replaces both apt php8.4 and php8.5. The caching stack is apcu,
-  # opcache (already in the default enabled set), memcached, and redis. The old
-  # memcache extension is dropped, since running it alongside memcached clashes.
-  # Not in nixpkgs, so dropped from the apt parity list: oauth, raphf, xmlrpc,
-  # zmq, interbase. odbc maps to pdo_odbc and sybase maps to pdo_dblib. imap and
-  # pspell are left out, imap needs the insecure uw-imap library and pspell is
-  # deprecated. Add them back if you truly need them.
-  phpWithExt = pkgs.php85.buildEnv {
-    extensions = { all, enabled }: enabled ++ (with all; [
-      apcu memcached redis msgpack
-      xdebug
-      pgsql pdo_pgsql mysqli pdo_mysql pdo_odbc pdo_dblib pdo_sqlite sqlite3
-      intl gd bcmath bz2 gmp ldap soap xsl zip tidy calendar exif ffi sodium
-      gettext dba enchant snmp sockets pcntl
-      amqp ast ds imagick mailparse mongodb uuid yaml smbclient
-    ]);
-    extraConfig = ''
-      memory_limit = 512M
-    '';
-  };
+  # PHP 8.5 with a curated extension set, shared with the php-fpm service behind
+  # nginx. The full rationale lives in ../parts/php.nix.
+  phpWithExt = import ../parts/php.nix pkgs;
 in
 {
   home.packages = with pkgs; [

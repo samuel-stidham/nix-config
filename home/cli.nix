@@ -28,6 +28,7 @@
     wget
     unzip
     rsync
+    openssl     # used by the secure_sites fish function, and generally handy
 
     # Cargo installs brought into Nix so nothing lives in ~/.cargo/bin.
     websocat    # websocket cli, confirmed 1.14.0
