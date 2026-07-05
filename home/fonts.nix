@@ -17,5 +17,10 @@
     nerd-fonts.blex-mono        # IBM Plex Mono patched
     nerd-fonts.gohufont
     nerd-fonts.terminess-ttf    # Terminus patched
+
+    # Doom's nerd-icons looks up the family "Symbols Nerd Font Mono" for its
+    # modeline/dashboard glyphs. Without this, icons render as empty boxes. This
+    # is the Nix-native replacement for `M-x nerd-icons-install-fonts`.
+    nerd-fonts.symbols-only
   ];
 }

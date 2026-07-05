@@ -91,6 +91,61 @@ apt_system() {
   sudo ubuntu-drivers autoinstall
 }
 
+system_logs() {
+  log "system logs: logrotate size caps + journald retention"
+  # Keep system logs bounded without the old ulimit hack. Two layers:
+  #
+  # 1. rsyslog text logs: rotate daily, and also whenever a file crosses 10M,
+  #    keeping 7. Worst case ~70M per log. The stock config only rotated weekly,
+  #    so a chatty log (Docker's HTTP polling firehose) grew to ~760M/week.
+  sudo tee /etc/logrotate.d/rsyslog >/dev/null <<'EOF'
+/var/log/syslog
+/var/log/mail.log
+/var/log/kern.log
+/var/log/auth.log
+/var/log/user.log
+/var/log/cron.log
+{
+	rotate 7
+	daily
+	maxsize 10M
+	missingok
+	notifempty
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+		/usr/lib/rsyslog/rsyslog-rotate
+	endscript
+}
+EOF
+
+  # 2. Run logrotate hourly instead of daily, so the 10M cap is checked often
+  #    enough to hold between rotations even under a flood.
+  sudo mkdir -p /etc/systemd/system/logrotate.timer.d
+  sudo tee /etc/systemd/system/logrotate.timer.d/override.conf >/dev/null <<'EOF'
+[Timer]
+OnCalendar=
+OnCalendar=hourly
+EOF
+
+  # journald: keep 1G of real history instead of a 10M clamp, and stop forwarding
+  # the journal firehose into /var/log/syslog. Comment out any old inline
+  # SystemMax* first so this drop-in is authoritative.
+  sudo sed -ri 's/^\s*(SystemMax(Use|FileSize|Files)=)/#\1/' /etc/systemd/journald.conf
+  sudo mkdir -p /etc/systemd/journald.conf.d
+  sudo tee /etc/systemd/journald.conf.d/00-sane-limits.conf >/dev/null <<'EOF'
+[Journal]
+SystemMaxUse=1G
+SystemMaxFiles=10
+ForwardToSyslog=no
+EOF
+
+  sudo systemctl daemon-reload
+  sudo systemctl restart systemd-journald
+  sudo systemctl restart logrotate.timer
+}
+
 vendor_debs() {
   log "vendor .deb apps"
   # Electron and Chromium apps that ship an AppArmor profile. Each has its own
@@ -131,6 +186,22 @@ doom_emacs() {
   ~/.config/emacs/bin/doom install
 }
 
+lazyvim() {
+  log "LazyVim (neovim config)"
+  # neovim is from Nix (cli.nix); LazyVim is just its config. Cloned to
+  # ~/.config/nvim, not Nix-managed, so LazyVim can write its own lazy-lock.json.
+  # It becomes yours to customize after the clone. lvim/LunarVim was dropped, it
+  # is abandoned upstream and does not support current neovim.
+  if [ -d "$HOME/.config/nvim" ]; then
+    echo "~/.config/nvim exists, skipping clone. Move it aside to reinstall."
+  else
+    git clone https://github.com/LazyVim/starter "$HOME/.config/nvim"
+    rm -rf "$HOME/.config/nvim/.git"
+  fi
+  # Preinstall plugins headlessly so the first launch is ready.
+  nvim --headless "+Lazy! sync" +qa || true
+}
+
 monogame() {
   log "MonoGame"
   # Not a Nix package. Templates and tools install through the Nix dotnet SDK.
@@ -151,9 +222,11 @@ all() {
   apply_home
   fish_login_shell
   apt_system
+  system_logs
   vendor_debs
   flatpaks
   doom_emacs
+  lazyvim
   monogame
   savvy
   log "Done. Reboot if the NVIDIA driver was reinstalled."

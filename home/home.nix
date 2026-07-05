@@ -14,6 +14,8 @@
     ./terminals.nix
     ./secrets.nix
     ./steam.nix
+    ./flameshot.nix
+    ./editors.nix
   ];
 
   home.username = "samuelstidham";

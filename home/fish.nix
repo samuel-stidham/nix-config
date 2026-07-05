@@ -1,8 +1,9 @@
 { config, pkgs, lib, ... }:
 
 # Fish module. home-manager generates config.fish, and that generated file
-# sources my hand-written fish tree at ~/fish. The tree holds env.fish,
-# configure_path.fish, aliases.fish, and functions.fish.
+# sources my fish tree at ~/fish. The tree holds env.fish, configure_path.fish,
+# aliases.fish, and functions.fish, now tracked in this repo under ../fish and
+# linked into place by the home.file block below, so it is reproducible.
 #
 # What is intentionally dropped from the old config.fish: pyenv init (no pyenv),
 # nvm loading (Nix owns node), and the conda initialize block plus
@@ -51,5 +52,15 @@
       end
       echo "$count site(s) secured in $certdir"
     '';
+  };
+
+  # The fish tree, tracked in ../fish and linked into ~/fish so config.fish's
+  # source lines above resolve to reproducible files. rvm.fish,
+  # update-clang-llvm-symlinks.fish, and .wakatime-project were dropped as dead.
+  home.file = {
+    "fish/env.fish".source = ../fish/env.fish;
+    "fish/configure_path.fish".source = ../fish/configure_path.fish;
+    "fish/aliases.fish".source = ../fish/aliases.fish;
+    "fish/functions.fish".source = ../fish/functions.fish;
   };
 }

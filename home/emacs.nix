@@ -16,8 +16,10 @@
 
 {
   home.packages = with pkgs; [
-    # pgtk build, current and native-compiled. Confirmed 30.2.
-    emacs-pgtk
+    # gtk build for X11 (Cinnamon), current and native-compiled. Confirmed 30.2.
+    # Not emacs-pgtk: that is the Wayland/pure-GTK build and warns + crashes under
+    # X11 ("pure-GTK interface under the X Window System ... unsupported").
+    emacs-gtk
     # Doom uses these icons in the dashboard and modeline. Run
     # `M-x nerd-icons-install-fonts` once too, for the modeline glyphs.
     emacs-all-the-icons-fonts

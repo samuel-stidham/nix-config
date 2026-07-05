@@ -15,6 +15,9 @@
     neovim      # your NEOVIM_HOME build moves to Nix
     tmux
 
+    # GitHub CLI. Nix owns it; no apt, snap, or vendor-repo copy was installed.
+    gh
+
     # Search tools.
     ripgrep     # rg
     fd

@@ -8,10 +8,8 @@
 
 {
   home.packages = with pkgs; [
-    # Screenshot tool. Confirmed 14.0.0, newer than apt 12.1.0. The native build
-    # keeps global hotkeys working, which the Flatpak build fumbles through the
-    # portal. This replaces the apt flameshot.
-    flameshot
+    # Screenshot tool moved to home/flameshot.nix, which manages it through the
+    # services.flameshot module (X11 legacy grab + tray daemon).
 
     # JetBrains IDE manager. Confirmed 3.5.0. It is not on Flathub, so Nix is the
     # cleanest channel. Note it still self-updates the IDEs it installs into
