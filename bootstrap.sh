@@ -179,8 +179,13 @@ flatpaks() {
 
 doom_emacs() {
   log "Doom Emacs"
+  # Pinned to a specific commit for reproducibility. Doom pins most of its own
+  # packages per-module, so pinning Doom itself also pins those. Bump this SHA
+  # to update Doom.
+  local doom_rev="8e4fbbae048a9abe897bf1878cbd32732a6d41d7"
   if [ ! -d "$HOME/.config/emacs" ]; then
-    git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs
+    git clone https://github.com/doomemacs/doomemacs ~/.config/emacs
+    git -C ~/.config/emacs -c advice.detachedHead=false checkout "$doom_rev"
   fi
   # The Doom user config comes from this repo through home-manager. Sync it.
   ~/.config/emacs/bin/doom install
@@ -192,14 +197,20 @@ lazyvim() {
   # ~/.config/nvim, not Nix-managed, so LazyVim can write its own lazy-lock.json.
   # It becomes yours to customize after the clone. lvim/LunarVim was dropped, it
   # is abandoned upstream and does not support current neovim.
+  # Pinned to a specific starter commit, and plugin versions pinned by the
+  # committed lazy-lock.json, for reproducibility. Bump the SHA and re-copy the
+  # lock (cp ~/.config/nvim/lazy-lock.json nvim/) to update.
+  local lazyvim_rev="803bc181d7c0d6d5eeba9274d9be49b287294d99"
   if [ -d "$HOME/.config/nvim" ]; then
     echo "~/.config/nvim exists, skipping clone. Move it aside to reinstall."
   else
     git clone https://github.com/LazyVim/starter "$HOME/.config/nvim"
+    git -C "$HOME/.config/nvim" -c advice.detachedHead=false checkout "$lazyvim_rev"
     rm -rf "$HOME/.config/nvim/.git"
+    cp "$FLAKE_DIR/nvim/lazy-lock.json" "$HOME/.config/nvim/lazy-lock.json"
   fi
-  # Preinstall plugins headlessly so the first launch is ready.
-  nvim --headless "+Lazy! sync" +qa || true
+  # Install exactly the locked plugin versions (restore honours lazy-lock.json).
+  nvim --headless "+Lazy! restore" +qa || true
 }
 
 monogame() {
