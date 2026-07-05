@@ -10,7 +10,7 @@ in
 {
   # Ghostty. It ships Catppuccin themes built in, so the theme is just a name.
   # This replaces the apt ghostty, so it is removed from apps.nix. The package is
-  # listed once in home.packages at the bottom, alongside rmux.
+  # listed once in home.packages at the bottom.
   xdg.configFile."ghostty/config".text = ''
     theme = Catppuccin Frappe
     font-family = ${nerdFont}
@@ -29,16 +29,16 @@ in
   };
   catppuccin.alacritty.enable = true;
 
-  # Zellij, the terminal multiplexer. This is where you run several AI agent
-  # sessions side by side. Confirmed 0.44.3. It ships Catppuccin themes built in,
-  # so the Frappe theme is just a name, no external module needed.
+  # Zellij, the one terminal multiplexer. Panes, tabs, floating, and stacked
+  # resize are all built in, which is where several AI agent sessions run side by
+  # side. Confirmed 0.44.3. It ships Catppuccin themes built in, so the Frappe
+  # theme is just a name, no external module needed. (rmux was dropped: it is a
+  # standalone tmux-compatible multiplexer, not a layer over zellij, so it just
+  # duplicated zellij's job.)
   programs.zellij = {
     enable = true;
     settings.theme = "catppuccin-frappe";
   };
 
-  # rmux drives the multiplexer with a typed SDK, so you can script and lay out
-  # concurrent agent panes. Confirmed 0.7.0. Point it at the zellij backend
-  # through its own config, per its docs.
-  home.packages = [ pkgs.ghostty pkgs.rmux ];
+  home.packages = [ pkgs.ghostty ];
 }
