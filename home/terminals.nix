@@ -40,5 +40,40 @@ in
     settings.theme = "catppuccin-frappe";
   };
 
+  # "servers" layout: boot the whole dev backend at once.
+  #
+  # Tab 1 (servers): a 2x2 grid. Left column holds the two process-compose stacks
+  # stacked one above the other (services on top, sites below). Right column is
+  # two free shells; the top-right one is focused so you land in a working
+  # terminal. close_on_exit keeps a crashed stack visible instead of vanishing.
+  # Tab 2 (term): a single full-window terminal.
+  #
+  # Launch with the `servers` fish function (fish.nix), which names the session so
+  # a second launch attaches instead of starting a conflicting copy.
+  xdg.configFile."zellij/layouts/servers.kdl".text = ''
+    // zellij --layout servers  (or the `servers` fish function)
+    layout {
+        tab name="servers" focus=true {
+            pane split_direction="vertical" {
+                pane split_direction="horizontal" {
+                    pane command="nix" close_on_exit=false {
+                        args "run" "/home/samuelstidham/nix-config#services"
+                    }
+                    pane command="nix" close_on_exit=false {
+                        args "run" "/home/samuelstidham/nix-config#sites"
+                    }
+                }
+                pane split_direction="horizontal" {
+                    pane focus=true
+                    pane
+                }
+            }
+        }
+        tab name="term" {
+            pane
+        }
+    }
+  '';
+
   home.packages = [ pkgs.ghostty ];
 }

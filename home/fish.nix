@@ -52,6 +52,15 @@
       end
       echo "$count site(s) secured in $certdir"
     '';
+
+    # Boot (or reattach to) the dev backend in zellij. Attaching first means a
+    # second call joins the running session instead of launching a second copy
+    # of the stacks and colliding on ports/data dirs. See the servers layout in
+    # terminals.nix.
+    functions.servers = ''
+      zellij attach servers 2>/dev/null
+      or zellij --session servers --layout servers
+    '';
   };
 
   # The fish tree, tracked in ../fish and linked into ~/fish so config.fish's
