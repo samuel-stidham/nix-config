@@ -27,11 +27,18 @@
     fastfetch   # neofetch is dead upstream and gone from nixpkgs, this replaces it
     figlet
     xclip
-    jq
+    jq          # JSON processor
+    yq-go       # mikefarah's yq: YAML/JSON/XML processor, standalone Go binary
     wget
     unzip
     rsync
     openssl     # used by the secure_sites fish function, and generally handy
+
+    # HTTP clients. httpie is the classic (http/https), xh is its fast Rust
+    # rewrite, curlie wraps curl with httpie-style UX.
+    httpie      # http, https
+    xh          # xh
+    curlie      # curlie
 
     # Cargo installs brought into Nix so nothing lives in ~/.cargo/bin.
     websocat    # websocket cli, confirmed 1.14.0
