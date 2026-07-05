@@ -9,7 +9,12 @@
 # migration in fish.nix stays clean. See fish.nix.
 
 {
+  # Master toggle on, with explicit per-program enrollment below. autoEnable is
+  # false to match the prior enable default, which silences the future
+  # auto-enroll deprecation notice without changing what gets themed.
   catppuccin.flavor = "frappe";
+  catppuccin.enable = true;
+  catppuccin.autoEnable = false;
 
   # Prompt, history, and directory jumping.
   programs.starship.enable = true;

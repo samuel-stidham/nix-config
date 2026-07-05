@@ -27,6 +27,28 @@ let
       rm -f "$out/bin/cc" "$out/bin/c++" "$out/bin/cpp"
     '';
   };
+
+  # PHP 8.5 with a curated, non-conflicting extension set. Confirmed php85 is
+  # 8.5.7. This replaces both apt php8.4 and php8.5. The caching stack is apcu,
+  # opcache (already in the default enabled set), memcached, and redis. The old
+  # memcache extension is dropped, since running it alongside memcached clashes.
+  # Not in nixpkgs, so dropped from the apt parity list: oauth, raphf, xmlrpc,
+  # zmq, interbase. odbc maps to pdo_odbc and sybase maps to pdo_dblib. imap and
+  # pspell are left out, imap needs the insecure uw-imap library and pspell is
+  # deprecated. Add them back if you truly need them.
+  phpWithExt = pkgs.php85.buildEnv {
+    extensions = { all, enabled }: enabled ++ (with all; [
+      apcu memcached redis msgpack
+      xdebug
+      pgsql pdo_pgsql mysqli pdo_mysql pdo_odbc pdo_dblib pdo_sqlite sqlite3
+      intl gd bcmath bz2 gmp ldap soap xsl zip tidy calendar exif ffi sodium
+      gettext dba enchant snmp sockets pcntl
+      amqp ast ds imagick mailparse mongodb uuid yaml smbclient
+    ]);
+    extraConfig = ''
+      memory_limit = 512M
+    '';
+  };
 in
 {
   home.packages = with pkgs; [
@@ -35,6 +57,27 @@ in
     clangNoGeneric
     llvmPinned.lld
     llvmPinned.lldb
+    llvmPinned.clang-tools   # clangd, clang-format, clang-tidy, clang-query, etc.
+    llvmPinned.llvm          # opt, llc, llvm-ar, llvm-nm, llvm-objdump, llvm-config
+
+    # GNU build and debug tools. Matches build-essential, gdb, cmake, and the
+    # autotools from apt. binutils gives ar, as, ld, nm, objdump, readelf, strip.
+    gdb
+    gnumake
+    cmake
+    ninja
+    autoconf
+    automake
+    libtool
+    pkg-config
+    bison
+    flex
+    binutils
+    gperf
+    ccache
+    meson       # modern build system, confirmed 1.10.2
+    go-task     # the `task` runner, confirmed 3.48.0
+    bazel       # confirmed 7.6.0
 
     # Go (go-projects, wails-projects). Confirmed 1.26.4. Dev tools from ~/go/bin.
     go
@@ -106,10 +149,11 @@ in
     deno        # deno-projects. Replaces the ~/.deno installer.
     typescript
 
-    # PHP (php-projects, laravel-projects, symfony-projects, nativephp-projects).
-    # Replaces the ondrej/php PPA. composer for project dependencies.
-    php
-    php.packages.composer
+    # PHP 8.5 (php-projects, laravel-projects, symfony-projects, nativephp).
+    # Replaces the ondrej/php PPA and both apt php8.4 and php8.5. The extension
+    # set is defined as phpWithExt in the let block above. composer rides on it.
+    phpWithExt
+    phpWithExt.packages.composer
 
     # Ruby (ruby-projects, rails-projects). Replaces apt ruby and rbenv. ruby
     # already ships bundler, so no separate bundler package. Gems install per
