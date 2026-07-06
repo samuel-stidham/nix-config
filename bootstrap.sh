@@ -78,9 +78,13 @@ apt_system() {
   sudo add-apt-repository -y multiverse
 
   sudo apt update
+  # HWE kernel headers for DKMS (virtualbox builds modules against them). The
+  # suffix tracks the LTS version, so derive it rather than hardcode: this yields
+  # hwe-24.04 now and hwe-26.04 automatically after the release upgrade.
+  hwe_headers="linux-headers-generic-hwe-$(. /etc/os-release && echo "$VERSION_ID")"
   sudo apt install -y \
     docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
-    openssh-server linux-headers-generic-hwe-24.04 \
+    openssh-server "$hwe_headers" \
     virtualbox virtualbox-dkms \
     steam-launcher \
     libfuse2t64 xdg-desktop-portal-gtk \
