@@ -1,6 +1,9 @@
 if not set -q SET_PATH_SOURCED
     set -x SET_PATH_SOURCED 1
 
+    # Zig and ZLS
+    add_to_path "$ZLS_HOME/zig-out/bin"
+
     # Texlive
     add_to_path "$TEXLIVE_HOME/bin/x86_64-linux"
 

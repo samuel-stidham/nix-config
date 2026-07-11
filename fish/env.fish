@@ -93,6 +93,11 @@ set -gx MANPATH $MANPATH "$MANPATH:$TEXLIVE_HOME/texmf-dist/doc/man"
 set -gx INFOPATH $INFOPATH "$INFOPATH:$TEXLIVE_HOME/texmf-dist/doc/info"
 
 # ================================
+# Zig and ZLS
+# ================================
+set -gx ZLS_HOME "$HOME/zls"
+
+# ================================
 # Nix (home-manager)
 # ================================
 # The Nix installer wrote /etc/fish/conf.d/nix.fish, which sources this same
