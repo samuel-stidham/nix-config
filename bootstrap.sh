@@ -625,11 +625,27 @@ EOF
   # change that persists across reboots and reinstalls. It needs a power cycle,
   # not a warm reboot, to take effect.
   echo
-  echo "WorkDrive is a WD80EZAZ, which parks its heads on a firmware timer that"
-  echo "hdparm cannot reach. Check and disable it, it is a one time change:"
-  echo "  nix shell nixpkgs#idle3tools -c sudo idle3ctl -g $wd    # read it"
-  echo "  nix shell nixpkgs#idle3tools -c sudo idle3ctl -d $wd    # disable it"
+  # WD IntelliPark, the "idle3" timer. hdparm -B cannot reach it, but hdparm -J
+  # can: it is a dedicated flag for exactly this drive family. hdparm's own man
+  # page describes the default 8 second timer as "a very poor choice for use with
+  # Linux" that causes "hundreds of thousands of head load/unload cycles" against
+  # a mechanism rated for 300,000 to 1,000,000, plus "the performance impact of
+  # the drive often having to wake-up before doing routine I/O".
+  #
+  # Do NOT use idle3-tools. It dates from the IDE era and drives its ioctl
+  # through HDIO_DRIVE_CMD, which libata rejects on a modern SATA stack:
+  #   HDIO_DRIVE_CMD(identify) failed: Invalid argument
+  #
+  # -J is WD specific. Never point it at the IronWolf.
+  echo
+  echo "WorkDrive is a WD80EZAZ, so it parks its heads on WD's idle3 firmware"
+  echo "timer. Read it, then disable it. This is a one time change:"
+  echo "  sudo hdparm -J $wd      # read"
+  echo "  sudo hdparm -J 0 $wd    # disable"
+  echo
   echo "Then FULLY POWER OFF, not reboot, for the firmware to accept it."
+  echo "It is written to the drive, so unlike fstab it survives a reinstall."
+  echo "hdparm upstream prefers WD's own WDIDLE3.EXE if that is an option."
   echo
   echo "Confirm parking is happening at all:"
   echo "  sudo smartctl -A $wd | grep -i load_cycle"
