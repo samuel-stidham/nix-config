@@ -34,10 +34,13 @@ in
     Service = {
       Type = "oneshot";
       ExecStart = "${pkgs.bash}/bin/bash ${certScript}";
-      # The script needs lego, passage, openssl and install. A user unit gets a
-      # minimal PATH, so hand it the profile explicitly.
+      # The script needs lego, passage, openssl, install, and systemctl to reload
+      # nginx once the cert changes. A user unit gets a minimal PATH, so hand it
+      # the profile explicitly. /run/current-system/sw/bin is where systemctl
+      # lives on this non-NixOS host via /usr/bin, kept explicit so a missing
+      # systemctl fails loudly rather than skipping the reload in silence.
       Environment = [
-        "PATH=${config.home.profileDirectory}/bin:/usr/bin:/bin"
+        "PATH=${config.home.profileDirectory}/bin:${pkgs.systemd}/bin:/usr/bin:/bin"
       ];
     };
   };

@@ -128,6 +128,23 @@ for host in forgejo atlantis linux mac; do
   install -m 0600 "$LEGO_KEY" "${CERTDIR}/${host}.${DOMAIN}.key"
 done
 
+# nginx reads the cert once, at start, and holds it open. A renewed file on disk
+# changes nothing until it reloads, so without this the cert would quietly expire
+# in serving while being perfectly valid on disk. That failure would arrive in
+# October as a browser warning with no obvious cause.
+#
+# Reload, not restart: reload re-reads the cert without dropping connections.
+# Only if the unit is actually running, so this stays a no-op on a machine where
+# nginx is not up rather than failing the renewal.
+if systemctl --user is-active --quiet nginx.service 2>/dev/null; then
+  if systemctl --user reload nginx.service 2>/dev/null; then
+    echo "reloaded nginx so it serves the new cert"
+  else
+    echo "WARNING: could not reload nginx. It is still serving the OLD cert." >&2
+    echo "Fix with: systemctl --user reload nginx" >&2
+  fi
+fi
+
 echo "installed into ${CERTDIR}:"
 printf '  %s\n' "${DOMAIN}.crt" "${DOMAIN}.key"
 if command -v openssl >/dev/null 2>&1; then

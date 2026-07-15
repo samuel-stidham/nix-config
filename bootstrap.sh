@@ -744,34 +744,75 @@ firewall_tailnet_only() {
     pkg_install ufw
   fi
   cat <<'EOF'
-These change the firewall, so they are yours to run, not the script's. Read
-them first. If you are on ssh over the LAN, the ssh rule matters or you will
-lock yourself out:
+These change the firewall, so they are yours to run, not the script's. Read them
+first. If you are on ssh over the LAN, keep the ssh rules or you lock yourself
+out.
+
+1. The posture:
 
   sudo ufw default deny incoming
   sudo ufw default allow outgoing
 
-  # The tailnet is just your own devices. Trust the interface, not ports, so
-  # new services are covered without touching the firewall again.
+  # The tailnet is just your own devices. Trust the interface, not ports, so a
+  # new service is covered without touching the firewall again.
   sudo ufw allow in on tailscale0
 
-  # Tailscale's own NAT traversal. Without this it falls back to relays, or
-  # fails to connect at all when both peers are behind NAT.
+  # Tailscale's own NAT traversal. Without this it falls back to relays, which
+  # are disabled here, and may not connect at all when you are away.
   sudo ufw allow 41641/udp
 
   # OPTIONAL. Only if you ssh to this box from the LAN rather than the tailnet.
-  # Skip it and use the tailnet name instead, which is the better habit.
-  # sudo ufw allow in on wlp6s0 to any port 22 proto tcp
-  # sudo ufw allow in on enp7s0 to any port 22 proto tcp
+  sudo ufw allow in on wlp6s0 to any port 22 proto tcp
+  sudo ufw allow in on enp7s0 to any port 22 proto tcp
 
   sudo ufw enable
+
+2. Then DELETE the blanket rules, which is the part that actually matters.
+   "default deny incoming" does nothing while an ALLOW ... Anywhere rule sits
+   above it, and these are why http://192.168.1.200:3000 answers from a phone
+   on the WiFi. The tailscale0 rule already covers every one of these services
+   for the devices that should reach them, so per-port rules are pure exposure:
+
+  sudo ufw delete allow 3000/tcp    # forgejo
+  sudo ufw delete allow 4141/tcp    # atlantis
+  sudo ufw delete allow 222/tcp     # forgejo ssh
+  sudo ufw delete allow 22000/tcp   # syncthing data
+  sudo ufw delete allow 22000/udp
+  sudo ufw delete allow 21027/udp   # syncthing local discovery
+  sudo ufw delete allow 22/tcp      # safe: the per-interface ssh rules remain
+
   sudo ufw status verbose
 
-Verify afterwards. The first two must fail and the third must succeed:
+3. Verify FROM ANOTHER DEVICE. A phone on the WiFi with tailscale off is the
+   whole test.
 
-  curl -m 4 http://192.168.1.200:4141/            # must time out now
-  curl -m 4 http://192.168.1.200:3000/            # must time out now
-  curl https://forgejo.home.samuelstidham.me/     # must still be 200
+   Do NOT test by curling this box's own LAN address from this box. Linux routes
+   traffic to a local address over loopback:
+
+     $ ip route get 192.168.1.200
+     local 192.168.1.200 dev lo ...
+
+   ufw allows loopback unconditionally and the wlp6s0 rules are never consulted,
+   so it answers 200 whether the firewall blocks the LAN or not. It proves
+   nothing and reads like a failure.
+
+   On the phone, WiFi on, tailscale off:
+
+     http://192.168.1.200:4141   must NOT load     (atlantis)
+     http://192.168.1.200:3000   must NOT load     (forgejo)
+
+   On the phone, tailscale ON:
+
+     https://forgejo.home.samuelstidham.me   must load, no cert warning
+
+4. Then check syncthing, because deleting 22000 and 21027 removes its LAN path
+   on purpose. It should fall back to the tailnet address pinned in
+   home/syncthing.nix. completion 100 is the proof, not "it looks connected":
+
+  API=$(grep -oPm1 '(?<=<apikey>)[^<]+' ~/.local/state/syncthing/config.xml)
+  MAC=4IM7O6G-XZONB7G-UUJSTYX-JR7CTR6-QQFE3HD-YTMK6IL-J66BG26-MUOMGQR
+  curl -s -H "X-API-Key: $API" \
+    "http://127.0.0.1:8384/rest/db/completion?folder=snhu-coursework&device=$MAC"
 EOF
 }
 
