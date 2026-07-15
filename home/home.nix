@@ -20,6 +20,7 @@
     ./flameshot.nix
     ./editors.nix
     ./syncthing.nix
+    ./home-certs.nix
   ];
 
   home.username = "samuelstidham";
