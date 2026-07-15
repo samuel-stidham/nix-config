@@ -4,6 +4,7 @@
   imports = [
     ./languages.nix
     ./libraries.nix
+    ./filesystems.nix
     ./python.nix
     ./fish.nix
     ./jdks.nix
