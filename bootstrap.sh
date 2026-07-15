@@ -176,12 +176,17 @@ _system_debian() {
   # hwe-26.04 automatically after the release upgrade.
   local hwe_headers
   hwe_headers="linux-headers-generic-hwe-$(. /etc/os-release && echo "$VERSION_ID")"
+  # Filesystem tools live HERE, not in a home-manager module. Every one of them
+  # needs root, and sudo's secure_path excludes the nix profile, so a nix-installed
+  # smartctl is on PATH and invisible to sudo at the same time. Root's tools come
+  # from the distro. See home/filesystems.nix for the full reasoning.
   pkg_install \
     podman podman-compose podman-docker \
     openssh-server "$hwe_headers" \
     virtualbox virtualbox-dkms \
     steam-launcher \
     libfuse2t64 xdg-desktop-portal-gtk \
+    btrfs-progs smartmontools hdparm exfatprogs \
     mit-scheme
 }
 
@@ -199,12 +204,14 @@ _system_fedora() {
   # kernel-devel matches akmods to the running kernel, the dnf peer of the HWE
   # headers. Steam and VirtualBox come from RPM Fusion. libfuse compat is
   # fuse-libs here.
+  # Root-only filesystem tools. See the note in _system_debian.
   pkg_install \
     podman podman-compose podman-docker \
     openssh-server kernel-devel \
     VirtualBox akmod-VirtualBox \
     steam \
     fuse-libs xdg-desktop-portal-gtk \
+    btrfs-progs smartmontools hdparm exfatprogs \
     mit-scheme
 }
 
