@@ -52,74 +52,10 @@
           runDir = "/home/samuelstidham/.local/share/dev-services";
           phpPkg = import ./parts/php.nix pkgs;
 
-          # nginx config for *.test. One wildcard vhost with a small driver layer.
-          # Prefer public/ (Laravel, Symfony 4+, Bedrock), then web/ (Symfony 2/3,
-          # older Drupal), else the site root (WordPress, plain PHP, static HTML).
-          # index.php is the front controller, static falls through to index.html.
-          # Shared serving logic, included by both the HTTP and HTTPS server
-          # blocks. The driver picks the document root, and php runs over the
-          # php-fpm socket.
-          siteBody = pkgs.writeText "nginx-site-body.conf" ''
-            set $base ${siteRoot}/$site;
-            set $sroot $base;
-            if (-d $base/public) { set $sroot $base/public; }
-            if (-d $base/web)    { set $sroot $base/web; }
-            root $sroot;
-
-            index index.php index.html index.htm;
-            charset utf-8;
-
-            location / {
-              try_files $uri $uri/ /index.php?$query_string;
-            }
-            location ~ \.php$ {
-              fastcgi_pass unix:${runDir}/php-fpm/php-fpm.sock;
-              fastcgi_index index.php;
-              include ${pkgs.nginx}/conf/fastcgi_params;
-              fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-              fastcgi_param PATH_INFO $fastcgi_path_info;
-              fastcgi_param HTTPS $https if_not_empty;
-            }
-            location ~ /\.(?!well-known).* { deny all; }
-          '';
-
-          nginxConf = pkgs.writeText "nginx-dev.conf" ''
-            daemon off;
-            pid ${runDir}/nginx/nginx.pid;
-            error_log ${runDir}/nginx/error.log;
-            events { worker_connections 1024; }
-            http {
-              include ${pkgs.nginx}/conf/mime.types;
-              default_type application/octet-stream;
-              access_log ${runDir}/nginx/access.log;
-              client_body_temp_path ${runDir}/nginx/tmp/client_body;
-              proxy_temp_path ${runDir}/nginx/tmp/proxy;
-              fastcgi_temp_path ${runDir}/nginx/tmp/fastcgi;
-              uwsgi_temp_path ${runDir}/nginx/tmp/uwsgi;
-              scgi_temp_path ${runDir}/nginx/tmp/scgi;
-
-              # HTTP. If secure_sites has made a cert for this host, force a 301 to
-              # HTTPS. Otherwise serve over HTTP, so unsecured sites still work.
-              server {
-                listen 80;
-                server_name ~^(?<site>.+)\.test$;
-                if (-f ${runDir}/certs/$host.crt) {
-                  return 301 https://$host$request_uri;
-                }
-                include ${siteBody};
-              }
-
-              # HTTPS. Per-site self-signed cert picked by SNI.
-              server {
-                listen 443 ssl;
-                server_name ~^(?<site>.+)\.test$;
-                ssl_certificate ${runDir}/certs/$ssl_server_name.crt;
-                ssl_certificate_key ${runDir}/certs/$ssl_server_name.key;
-                ssl_protocols TLSv1.2 TLSv1.3;
-                include ${siteBody};
-              }
-            }
-          '';
+          # nginx's config moved to home/web.nix, where nginx now runs as a
+          # systemd user service. It fronts Forgejo as well as the dev sites, so
+          # it must outlive `nix run .#sites`. Keeping a second copy here would
+          # be a config that looks authoritative and serves nothing.
 
           phpFpmConf = pkgs.writeText "php-fpm-dev.conf" ''
             [global]
@@ -151,19 +87,24 @@
         packages.nixGL = nixgl.packages.${system}.nixGLDefault;
         packages.nixGLNvidia = nixgl.packages.${system}.nixGLNvidia;
 
-        # Web layer for ~/sites/<name> served at <name>.test. Kept separate from
-        # the services stack, since only this one needs the port 80 and resolver
-        # setup. Run with `nix run .#sites`. See MIGRATION notes for the one-time
-        # system config. dnsmasq answers *.test on 127.0.0.1:5353.
+        # Web layer for ~/sites/<name>. php-fpm and the .test resolver. Run with
+        # `nix run .#sites`. See MIGRATION notes for the one-time system config.
+        #
+        # nginx is NOT here any more. It moved to a systemd user service in
+        # home/web.nix, because it now fronts Forgejo as well as the dev sites,
+        # and HTTPS to the git server cannot depend on this stack being started
+        # by hand. Two nginxes would also fight: a listener on 0.0.0.0:443 blocks
+        # every other bind on the box (verified, EADDRINUSE), so port 443 has
+        # exactly one owner.
+        #
+        # php-fpm stays. When this stack is down, nginx is still up and a dev
+        # site returns 502, which is the honest answer rather than a refused
+        # connection. Forgejo is unaffected.
         process-compose."sites" = {
           settings.processes = {
             php-fpm.command = ''
               mkdir -p ${runDir}/php-fpm
               exec ${phpPkg}/bin/php-fpm -F -y ${phpFpmConf}
-            '';
-            nginx.command = ''
-              mkdir -p ${runDir}/nginx/tmp
-              exec ${pkgs.nginx}/bin/nginx -c ${nginxConf} -p ${runDir}/nginx
             '';
             # Port 5333 avoids mDNS/avahi on 5353. systemd-resolved routes .test
             # here, see the one-time system setup in the repo notes.

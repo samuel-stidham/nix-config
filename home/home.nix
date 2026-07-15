@@ -21,6 +21,7 @@
     ./editors.nix
     ./syncthing.nix
     ./home-certs.nix
+    ./web.nix
   ];
 
   home.username = "samuelstidham";
