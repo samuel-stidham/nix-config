@@ -143,8 +143,32 @@ Rebuilt instead, which is faster than restoring it:
 ./scripts/backup.sh mc-restore           # restore Minecraft in place
 ./scripts/backup.sh snapshots            # list
 ./scripts/backup.sh restore <id> <dir>   # restore a snapshot to a directory
+./scripts/backup.sh forget               # DRY RUN: show what would age out
+./scripts/backup.sh forget --apply       # actually forget, then prune
 ./scripts/keep-awake.sh "restic run"     # block sleep during a long run
 ```
+
+### forget
+
+`forget` is the only irreversible command here, so it is a dry run by default and
+needs `--apply` to remove anything. The policy is
+`--keep-last 3 --keep-daily 7 --keep-weekly 4 --keep-monthly 12`.
+
+Two things about it are worth knowing before you expect it to free space.
+
+`forget` on its own only drops the snapshot *pointer*, it frees nothing. `--prune`
+is what deletes the unreferenced blobs, which is why `--apply` passes both. If
+`forget` removes no snapshots, restic skips prune and nothing is reclaimed.
+
+Snapshots are grouped by host *and path set*, and the policy applies per group.
+Change `BACKUP_PATHS` and the next snapshot lands in a brand new group, where it
+is the "last snapshot" and is kept forever regardless of age. That is why the
+first snapshot, taken while the Calibre library still lived in `~`, is retained
+even though newer ones exist: its path list is different, so it is a group of one.
+
+The policy keeps more than feels necessary on purpose. Dedup makes history nearly
+free: a 92 GiB backup added 405 MiB to the repo, because every unchanged blob is
+shared with earlier snapshots. A year of monthlies costs a rounding error.
 
 Credentials come from the vault through `safetybox exec`, so nothing is exported
 into your shell and no AWS profile is needed.

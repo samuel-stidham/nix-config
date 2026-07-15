@@ -199,8 +199,36 @@ case "${1:-}" in
     [ $# -eq 2 ] || { echo "usage: ./backup.sh restore <snapshot-id> <target-dir>" >&2; exit 1; }
     sb_restic restore "$1" --target "$2"
     ;;
+  # Age out old snapshots, then reclaim the blobs nothing references any more.
+  #
+  # forget alone only removes the snapshot POINTER, it does not free a single
+  # byte in S3. --prune is what actually deletes unreferenced data, and it is
+  # the reason this is one subcommand rather than a raw restic invocation.
+  #
+  # Run `./backup.sh forget` first. It is a DRY RUN and prints exactly which
+  # snapshots would go. Only `./backup.sh forget --apply` destroys anything.
+  # This asymmetry is deliberate: forget is the one irreversible operation here,
+  # a snapshot removed is a restore path that no longer exists.
+  #
+  # The policy keeps more than feels necessary on purpose, because dedup makes
+  # history nearly free. A 92 GiB backup added 405 MiB to the repo, since the
+  # unchanged blobs are shared with every earlier snapshot. Keeping a year of
+  # monthlies costs a rounding error and buys "restore it as it was in March".
+  forget)
+    shift
+    POLICY=(--keep-last 3 --keep-daily 7 --keep-weekly 4 --keep-monthly 12)
+    if [ "${1:-}" = "--apply" ]; then
+      echo "forgetting snapshots outside the policy, then pruning ..."
+      sb_restic forget "${POLICY[@]}" --prune
+    else
+      echo "DRY RUN. Nothing is removed. Re-run with --apply to actually forget."
+      echo "policy: ${POLICY[*]}"
+      echo
+      sb_restic forget "${POLICY[@]}" --dry-run
+    fi
+    ;;
   *)
-    echo "usage: ./backup.sh {init|backup|mc-backup|mc-restore|snapshots|restore <id> <dir>}" >&2
+    echo "usage: ./backup.sh {init|backup|mc-backup|mc-restore|snapshots|restore <id> <dir>|forget [--apply]}" >&2
     exit 1
     ;;
 esac
