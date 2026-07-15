@@ -72,17 +72,25 @@ export CLOUDFLARE_DNS_API_TOKEN
 # The ACME account email. Let's Encrypt uses it for expiry warnings only, so it
 # is not a secret, but it does not belong hardcoded in a public repo either.
 #
-# CERT_EMAIL first, so a shell that has it set wins. The timer does NOT have it:
-# a systemd user unit gets a minimal environment and never sources the shell
-# profile, so anything exported by fish is invisible here. That is why passage is
-# the fallback rather than the other way round. A renewal that only works when
-# run by hand is not a renewal.
+# CERT_EMAIL first, so a shell that already has it exported wins and no vault is
+# touched. The timer does NOT have it: a systemd user unit gets a minimal
+# environment and never sources the shell profile, so anything fish exports is
+# invisible here. That is why the vault is the fallback rather than the reverse.
+# A renewal that only works when run by hand is not a renewal.
+#
+# reveal, not get. `safetybox get` prints metadata and its value field always
+# reads [REDACTED]. reveal is the single verb that emits plaintext, and it emits
+# JSON, hence the jq. Using get here would silently set EMAIL to nothing useful.
 EMAIL="${CERT_EMAIL:-}"
-[ -n "$EMAIL" ] || EMAIL="$(passage show global/acme-email 2>/dev/null || true)"
+if [ -z "$EMAIL" ]; then
+  EMAIL="$(safetybox reveal global/acme-email --json \
+             --passphrase-file <(passage show safetybox/passphrase) 2>/dev/null \
+           | jq -r '.value // empty' 2>/dev/null || true)"
+fi
 if [ -z "$EMAIL" ]; then
   echo "no ACME email. Set one of:" >&2
   echo "  export CERT_EMAIL=you@example.com" >&2
-  echo "  printf '%s' you@example.com | passage insert -mf global/acme-email" >&2
+  echo "  printf '%s' you@example.com | safetybox set global/acme-email --env-name CERT_EMAIL" >&2
   exit 1
 fi
 
