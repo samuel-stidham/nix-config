@@ -14,10 +14,15 @@
   programs.fish = {
     enable = true;
 
-    # Runs for every shell, login or not. Environment and PATH first.
+    # Runs for every shell, login or not. Environment and PATH first, then the
+    # global secrets from the safetybox vault, so they are set in every shell
+    # from any directory, scripts included. secrets.fish holds no secret values,
+    # only the reveal command, so it is tracked in this repo like any other
+    # config.
     shellInit = ''
       source $HOME/fish/env.fish
       source $HOME/fish/configure_path.fish
+      source $HOME/fish/secrets.fish
     '';
 
     # Runs for interactive shells only. Aliases and functions.
@@ -64,5 +69,6 @@
     "fish/configure_path.fish".source = ../fish/configure_path.fish;
     "fish/aliases.fish".source = ../fish/aliases.fish;
     "fish/functions.fish".source = ../fish/functions.fish;
+    "fish/secrets.fish".source = ../fish/secrets.fish;
   };
 }
