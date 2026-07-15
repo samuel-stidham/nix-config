@@ -135,6 +135,27 @@ let
         location / {
           proxy_pass http://127.0.0.1:3000;
           include ${proxyHeaders};
+
+          # git's smart HTTP is a streaming, chunked protocol, and nginx's
+          # defaults fight it. Removing the size limit above is not enough.
+          #
+          # proxy_request_buffering: nginx otherwise spools the ENTIRE push to
+          # disk before forwarding a single byte. On a large push that is a long
+          # silence with no progress, which reads as a hang rather than as
+          # buffering. Off means it streams straight to forgejo.
+          #
+          # proxy_buffering: same in reverse. A fetch or clone would be
+          # accumulated instead of streamed, so git's progress output stalls and
+          # then arrives at once.
+          #
+          # Both need proxy_http_version 1.1, set in the shared headers, since
+          # 1.0 has no chunked transfer encoding at all.
+          proxy_request_buffering off;
+          proxy_buffering off;
+          # A big push over a slow link should not be killed mid-transfer.
+          # proxy_read_timeout comes from the shared headers; setting it again
+          # here is a duplicate directive and nginx refuses to start.
+          proxy_send_timeout 600s;
         }
       }
 
