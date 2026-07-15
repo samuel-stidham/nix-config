@@ -154,6 +154,28 @@ fi
 # "probably fine" into a list you can check. Delete from the log, never from hope.
 IMPORT_LOG="${IMPORT_LOG:-$HOME/.local/state/education-import.log}"
 
+# Add a tag to books that already exist, without destroying the tags they have.
+#
+# set_metadata --field tags:"X" REPLACES the entire tag list, it does not append.
+# Plenty of these books ship real tags in their own metadata (Programming,
+# refactoring, SOLID principles), and overwriting those to say "Computer Science"
+# would throw away information the file came with. So read, union, write back.
+# A book that already carries the tag is left untouched, which keeps this
+# idempotent.
+tag_ids() {
+  local tag="$1"; shift
+  local id cur new
+  for id in "$@"; do
+    cur="$(sqlite3 -readonly "file:$LIB/metadata.db?immutable=1" \
+      "select coalesce(group_concat(t.name,','),'')
+       from books_tags_link l join tags t on t.id=l.tag where l.book=$id;" 2>/dev/null)"
+    printf '%s' "$cur" | tr ',' '\n' | grep -qxF "$tag" && continue
+    if [ -n "$cur" ]; then new="$cur,$tag"; else new="$tag"; fi
+    calibredb set_metadata "$id" --field "tags:$new" --with-library "$LIB" >/dev/null 2>&1 \
+      || say "    WARN: could not tag id ${id}"
+  done
+}
+
 import_dir() {
   local dir="$1" tag="$2"
   [ -d "$dir" ] || { say "  skip (absent): ${dir/#$HOME/\~}"; return 0; }
@@ -163,14 +185,29 @@ import_dir() {
   say "  ${n} books  ${dir/#$HOME/\~}  -> tag: ${tag}"
   # No --duplicates flag on purpose. Without it calibredb SKIPS books already in
   # the library, matching on title and author. That is the dedup.
+  #
+  # Do NOT pass --tags here. calibredb accepts it and honours it for a single
+  # file, but with -r it reads metadata per file and silently discards the
+  # command line metadata options: no error, no warning, exit 0, books land
+  # untagged. That bug cost a whole import run. Tag from the reported ids
+  # instead, which is also more honest, it only tags what was actually added.
   if [ "$APPLY" = 1 ]; then
     mkdir -p "$(dirname "$IMPORT_LOG")"
-    {
-      printf '\n########## %s  (tag: %s) ##########\n' "$dir" "$tag"
-      calibredb add -r "$dir" --tags "$tag" --with-library "$LIB" 2>&1
-    } | tee -a "$IMPORT_LOG"
+    local out ids
+    out="$( { printf '\n########## %s  (tag: %s) ##########\n' "$dir" "$tag"
+              calibredb add -r "$dir" --with-library "$LIB" 2>&1
+            } | tee -a "$IMPORT_LOG" )"
+    # "Added book ids: 1, 2, 3" -> "1 2 3". Absent when everything was a dupe.
+    ids="$(printf '%s\n' "$out" | sed -n 's/^Added book ids: *//p' | tr ',' ' ')"
+    if [ -n "${ids// /}" ]; then
+      # shellcheck disable=SC2086
+      tag_ids "$tag" $ids
+      say "    tagged $(printf '%s\n' $ids | grep -c .) newly added"
+    else
+      say "    nothing new (all duplicates)"
+    fi
   else
-    say "  DRY: calibredb add -r '$dir' --tags '$tag' --with-library '$LIB'"
+    say "  DRY: calibredb add -r '$dir' --with-library '$LIB'  then tag -> ${tag}"
   fi
 }
 
