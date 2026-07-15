@@ -19,6 +19,7 @@
     ./steam.nix
     ./flameshot.nix
     ./editors.nix
+    ./syncthing.nix
   ];
 
   home.username = "samuelstidham";
