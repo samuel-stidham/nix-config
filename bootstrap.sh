@@ -707,6 +707,74 @@ tailscale_net() {
   echo "Then reach services by their tailnet name, e.g. forgejo, from any network."
 }
 
+firewall_tailnet_only() {
+  log "firewall: services on the tailnet only"
+  # Forgejo, Atlantis and nginx all bind every interface, so today anything on
+  # the WiFi reaches them:
+  #
+  #   http://192.168.1.200:4141  -> atlantis's UI, no TLS, no auth
+  #   http://192.168.1.200:3000  -> forgejo's login page
+  #
+  # That was verified, not assumed. Both answered 200 from the LAN address.
+  #
+  # They are NOT reachable from the internet: the home lab names resolve to
+  # 100.68.26.36, a CGNAT address out of 100.64.0.0/10 that nothing on the
+  # public internet can route to. The exposure is the LAN, and only the LAN.
+  #
+  # WHY DENY BY DEFAULT RATHER THAN DENY THE PORTS
+  #
+  # This box has two LAN interfaces, wlp6s0 and enp7s0, and the static IP is
+  # meant to follow whichever is in use. Naming interfaces to block is
+  # whack-a-mole: the rule is only correct until a cable is plugged in. Deny
+  # everything inbound, allow the tailnet, and the posture holds no matter which
+  # NIC is live or which service someone binds next.
+  #
+  # Atlantis's own atlantis.yaml already assumes this: "There is no approval
+  # requirement, since Forgejo blocks approving your own PR." That is only true
+  # if strangers cannot reach it in the first place.
+  #
+  # WHAT THIS WILL BREAK, ON PURPOSE
+  #
+  # Anything inbound over the LAN. Most notably Syncthing, which currently talks
+  # to the MacBook over a link-local address on wlp6s0. It will fall back to the
+  # tailnet address pinned in home/syncthing.nix, which is why that was set up
+  # first. If you later want a LAN service reachable, add one explicit rule
+  # rather than turning this off.
+  if ! command -v ufw >/dev/null 2>&1; then
+    pkg_install ufw
+  fi
+  cat <<'EOF'
+These change the firewall, so they are yours to run, not the script's. Read
+them first. If you are on ssh over the LAN, the ssh rule matters or you will
+lock yourself out:
+
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
+
+  # The tailnet is just your own devices. Trust the interface, not ports, so
+  # new services are covered without touching the firewall again.
+  sudo ufw allow in on tailscale0
+
+  # Tailscale's own NAT traversal. Without this it falls back to relays, or
+  # fails to connect at all when both peers are behind NAT.
+  sudo ufw allow 41641/udp
+
+  # OPTIONAL. Only if you ssh to this box from the LAN rather than the tailnet.
+  # Skip it and use the tailnet name instead, which is the better habit.
+  # sudo ufw allow in on wlp6s0 to any port 22 proto tcp
+  # sudo ufw allow in on enp7s0 to any port 22 proto tcp
+
+  sudo ufw enable
+  sudo ufw status verbose
+
+Verify afterwards. The first two must fail and the third must succeed:
+
+  curl -m 4 http://192.168.1.200:4141/            # must time out now
+  curl -m 4 http://192.168.1.200:3000/            # must time out now
+  curl https://forgejo.home.samuelstidham.me/     # must still be 200
+EOF
+}
+
 nm_static_ip() {
   log "static LAN IP (NetworkManager)"
   # Pin the same IPv4 on both the wired and WiFi profiles, so the LAN address
@@ -831,6 +899,7 @@ all() {
   drives_stay_awake
   btrfs_scrub_sudo
   tailscale_net
+  firewall_tailnet_only
   nm_static_ip
   vendor_apps
   flatpaks
