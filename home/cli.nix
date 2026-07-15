@@ -18,6 +18,21 @@
     # GitHub CLI. Nix owns it; no apt, snap, or vendor-repo copy was installed.
     gh
 
+    # Exercism, for practicing exercises locally. Replaces the hand-installed
+    # binary at /usr/local/bin/exercism, which is outside Nix and never updates.
+    #
+    # The shell completions come with it and need no setup. The package ships
+    # them to the standard locations, which the profile already exposes:
+    #   share/bash-completion/completions/exercism.bash
+    #   share/zsh/site-functions/_exercism
+    #   share/fish/vendor_completions.d/exercism.fish
+    # ~/.nix-profile/share/fish/vendor_completions.d is already in
+    # $fish_complete_path, so fish finds them the moment this is installed. Do
+    # NOT hand-copy the completion files from the release tarball into
+    # ~/.config/fish, as the upstream README suggests. That pins a copy that
+    # silently drifts from the CLI. Let the package version them.
+    exercism
+
     # Search tools.
     ripgrep     # rg
     fd

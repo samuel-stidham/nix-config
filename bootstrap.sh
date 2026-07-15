@@ -373,9 +373,11 @@ vendor_apps() {
 # --------------------------------------------------------------------------
 flatpaks() {
   log "Flatpak apps"
+  # Calibre is NOT here. It comes from its own binary installer, see calibre().
+  # Upstream explicitly says not to use distro packages, and the Flatpak is
+  # sandboxed, so it cannot see a library on /media without a filesystem grant.
   flatpak_install \
     com.github.tchx84.Flatseal \
-    com.calibre_ebook.calibre \
     org.gimp.GIMP \
     org.prismlauncher.PrismLauncher \
     io.ente.auth
@@ -588,6 +590,59 @@ claude_code() {
   curl -fsSL https://claude.ai/install.sh | bash
 }
 
+calibre() {
+  log "Calibre"
+  # Calibre's own binary installer, which upstream considers the supported path:
+  # "Please do not use your distribution provided calibre package, as those are
+  # often buggy/outdated." The binary install bundles private copies of every
+  # dependency, which is exactly why the distro and Nix builds lag.
+  #
+  # It is deliberately not a Flatpak. The Flatpak is sandboxed and cannot see the
+  # library on /media/samuelstidham/StoragePrime without an explicit
+  # --filesystem grant, so it would start up unable to find the books.
+  #
+  # It is deliberately not in Nix either. Calibre updates itself, and pinning it
+  # in the flake would fight that, the same reasoning as Claude Code and the AWS
+  # CLI. It installs to /opt/calibre and symlinks into /usr/bin.
+  #
+  # The library itself lives on StoragePrime and is set in
+  # ~/.config/calibre/global.py.json as library_path. Keep that in step with
+  # CALIBRE_LIBRARY in scripts/backup.sh.
+  if command -v calibre >/dev/null 2>&1; then
+    echo "calibre already present: $(calibre --version 2>/dev/null | head -1)"
+    echo "Re-running the installer upgrades it in place."
+  fi
+
+  # The binary build bundles its own Python and Qt, but NOT the X11 libraries
+  # that Qt dlopens at startup. Without this it dies immediately with:
+  #   You are missing the system library libxcb-cursor.so.0
+  #
+  # This cannot come from Nix. calibre lives at /opt/calibre and is not a Nix
+  # build, so it links against the system loader and never sees the Nix profile.
+  # It has to be a system package, which is why it is here and not in a module.
+  #
+  # The name differs per distro. Debian ships libxcb-cursor0, Fedora ships the
+  # same shared object inside xcb-util-cursor.
+  case "$FAMILY" in
+    debian) pkg_install libxcb-cursor0 ;;
+    fedora)
+      if [ "$ATOMIC" = 1 ]; then
+        # A Fedora Atomic desktop image almost certainly already has it, and
+        # layering is a last resort on an immutable base. Only reach for it if
+        # calibre actually complains.
+        echo "Atomic base: xcb-util-cursor should already be in the image."
+        echo "If calibre reports the missing library, layer it and reboot:"
+        echo "  sudo rpm-ostree install xcb-util-cursor"
+      else
+        pkg_install xcb-util-cursor
+      fi
+      ;;
+    *) echo "Unknown family, install libxcb-cursor.so.0 yourself if calibre fails." >&2 ;;
+  esac
+
+  sudo -v && wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin
+}
+
 aws_cli() {
   log "AWS CLI v2"
   # From AWS's own bundled installer, not Nix, so it rolls forward on its own
@@ -629,6 +684,7 @@ all() {
   savvy
   claude_code
   aws_cli
+  calibre
   log "Done. Reboot if a driver or a layered package changed."
 }
 

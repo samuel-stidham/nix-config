@@ -45,13 +45,22 @@ MC_DIR="${MC_DIR:-$HOME/.local/share/PrismLauncher/instances}"
 #   ~/.var/app/org.mozilla.firefox/.mozilla/firefox
 FIREFOX_PROFILE="${FIREFOX_PROFILE:-$HOME/snap/firefox/common/.mozilla/firefox}"
 
+# The Calibre library lives on StoragePrime, not the nvme. It is still Tier 1 and
+# still backed up: StoragePrime survives a reinstall, but it does not survive a
+# drive failure, and the library is irreplaceable.
+#
+# Keep this in step with Calibre's own library_path in
+# ~/.config/calibre/global.py.json. If they drift, restic keeps backing up an
+# empty or stale directory and nobody notices until a restore.
+CALIBRE_LIBRARY="${CALIBRE_LIBRARY:-/media/samuelstidham/StoragePrime/Books/Calibre Library}"
+
 # Tier 1 only: the irreplaceable set. Everything else is rebuilt by bootstrap.sh,
 # home-manager, and steam-restore.sh, or lives on WorkDrive which a reinstall
 # never touches. See "Machine File Structure" in the obsidian vault.
 BACKUP_PATHS=(
   "$HOME/code"                 # all source. the whole point
   "$HOME/Documents"            # Education, Employment, Vital, obsidian-vaults
-  "$HOME/Calibre Library"      # library + metadata.db
+  "$CALIBRE_LIBRARY"           # library + metadata.db
   "$HOME/forgejo"              # critical infra: stack, repos, DB, runner config
   "$HOME/sites"                # the *.test project roots
   "$MC_DIR"                    # worlds + journeymap + the exact mod versions
