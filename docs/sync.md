@@ -23,29 +23,63 @@ revision buys nothing; 90 days of "I deleted that by mistake" is the requirement
 
 Recovered files live in `.stversions/` inside each folder.
 
-## Reachability: they only find each other on the LAN
+## Reachability: Tailscale, not public discovery
 
 `globalAnnounceEnabled` and `relaysEnabled` are both **off**, so this machine is
 never announced to Syncthing's public infrastructure and never bounces traffic
-through a stranger's relay.
+through a stranger's relay. That is only affordable because Tailscale provides
+reachability instead.
 
-The cost is real and worth stating plainly: discovery is **local only**. Today the
-two machines find each other over the LAN, on a link-local address like
-`[fe80::…%wlp6s0]:22000`. **When the MacBook leaves the house, sync stops** until
-it comes back.
-
-The fix is a static Tailscale address, not re-enabling global discovery. In
-[home/syncthing.nix](../home/syncthing.nix), uncomment and fill in:
+The MacBook is pinned to its tailnet address:
 
 ```nix
-devices."Samuels-MacBook-Pro-M4" = {
-  id = macbook;
-  addresses = [ "tcp://<mac>.<tailnet>.ts.net:22000" ];
-};
+addresses = [ "dynamic" "tcp://100.116.77.69:22000" ];
 ```
 
-Syncthing is end-to-end encrypted regardless; Tailscale is only about being
+Both entries, in that order, on purpose. `dynamic` is local discovery, which wins
+at home and keeps working if Tailscale is down. The static tailnet address is what
+covers everywhere else. Without it, discovery would be **LAN only** and sync would
+stop the moment the MacBook left the house.
+
+The IP rather than the MagicDNS name (`samuels-macbook-pro-m4.tailc1fe6c.ts.net`):
+Tailscale assigns `100.116.77.69` permanently to that device, and an IP does not
+have to resolve inside Syncthing's own process. There is no speed cost — Tailscale
+picks the direct LAN path when both machines are home, so a `tailscale ping`
+answers in ~12ms via `192.168.1.47`, not through a relay.
+
+Syncthing is end-to-end encrypted regardless. Tailscale is only about being
 reachable without opening 22000/tcp+udp or 21027/udp to the world.
+
+### The tailnet
+
+Both machines must be on the **same** tailnet, which is under
+**`samuelstidham7@gmail.com`** — not the usual `dqfan2012@gmail.com`. Signing a
+machine in with the wrong account silently creates a *second* tailnet: everything
+looks connected, the machine gets a `100.x` address, and the two never see each
+other. Check https://login.tailscale.com/admin/machines — both must be in one list.
+
+| machine | tailnet address |
+| --- | --- |
+| this machine | `100.68.26.36` |
+| MacBook Pro M4 | `100.116.77.69` |
+
+Tailscale's MagicDNS coexists with the `*.test` setup: `resolvectl` keeps
+`Global: ~test` pointed at the dnsmasq from `nix run .#sites` and confines
+Tailscale to `tailc1fe6c.ts.net` on the `tailscale0` link. If `.test` names ever
+break after a `tailscale up`, that is the cause, and `sudo tailscale up
+--accept-dns=false` is the escape hatch.
+
+### Verifying it
+
+```bash
+tailscale status                        # both machines, both Connected
+tailscale ping 100.116.77.69            # pong = reachable
+```
+
+Being connected over `[fe80::…%wlp6s0]` is **not** a problem: Syncthing keeps a
+working connection rather than churning it, and link-local is the fast path at
+home. The tailnet address is the fallback. The only real test of the away case is
+opening the laptop somewhere else.
 
 ## The repo wins, the GUI loses
 

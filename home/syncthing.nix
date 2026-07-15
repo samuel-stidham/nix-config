@@ -73,9 +73,20 @@ in
 
       devices."Samuels-MacBook-Pro-M4" = {
         id = macbook;
-        # addresses = [ "tcp://<mac>.<tailnet>.ts.net:22000" ];
-        # Uncomment once the Mac's tailnet name is known. Until then the two
-        # only find each other on the LAN. See the reachability note above.
+        # "dynamic" is local discovery, which only works on this LAN. The static
+        # tailscale address is what makes the Mac reachable from anywhere, and it
+        # is the reason global discovery and public relays can stay off.
+        #
+        # Both are listed, in that order, on purpose. Syncthing tries them all;
+        # local discovery wins at home and the tailnet address covers everywhere
+        # else. Keeping "dynamic" means the LAN still works if tailscale is down.
+        #
+        # The IP, not the MagicDNS name. 100.116.77.69 is assigned to this device
+        # by tailscale and does not change, whereas the .ts.net name has to
+        # resolve inside syncthing's own process, which is a dependency this does
+        # not need. Tailscale picks the direct LAN path when both are home
+        # anyway, so there is no speed cost to naming the tailnet address.
+        addresses = [ "dynamic" "tcp://100.116.77.69:22000" ];
       };
 
       folders = {
