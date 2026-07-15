@@ -66,6 +66,7 @@ BACKUP_PATHS=(
   "$MC_DIR"                    # worlds + journeymap + the exact mod versions
   "$FIREFOX_PROFILE"           # extension configs Sync does not carry
   "$HOME/Desktop"              # safety net. Should be near empty after the reorg
+  "$HOME/Sync"                 # syncthing: SNHU coursework + library, see docs/sync.md
   "$HOME/.local/share/safetybox/vault.db"
   "$HOME/.config/safetybox/identity.age"
   "$HOME/.passage"
@@ -82,6 +83,11 @@ EXCLUDES=(
   # The raw forgejo data is owned by a podman subuid and is unreadable here.
   # forgejo_archive() captures it as forgejo-data.tar instead, which IS readable.
   --exclude "$HOME/forgejo/forgejo-data"
+  # Syncthing's own history and folder markers. .stversions is a second copy of
+  # every file syncthing ever replaced or deleted, which is exactly what restic
+  # snapshots already are. Backing it up would store that history twice.
+  --exclude '*/.stversions'
+  --exclude '*/.stfolder'
 )
 
 # Forgejo keeps its metadata in a live SQLite database: users, issues, PRs,

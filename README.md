@@ -50,7 +50,8 @@ hardcoded to my machine, so fork and adjust before you use it.
 - [docs/backup.md](docs/backup.md) — the restic backup and restore runbook, what
   is backed up and what is deliberately not.
 - [docs/sync.md](docs/sync.md) — Syncthing between the MacBook and this machine:
-  books one way, coursework both ways, and why the Calibre library is not synced.
+  SNHU coursework and library, why the Calibre library is not synced, and why
+  the two only find each other on the LAN.
 
 ## Usage
 

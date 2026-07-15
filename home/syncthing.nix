@@ -1,116 +1,110 @@
 { config, pkgs, lib, ... }:
 
-# Syncthing: the MacBook is the source of truth for books, coursework goes both
-# ways.
+# Syncthing: SNHU coursework and course library, shared with the MacBook.
 #
-# WHY TWO FOLDERS INSTEAD OF ONE
+# This file describes what is actually running. It was rewritten to match the
+# setup made on the Mac side, which replaced an earlier guess of mine that had
+# books one-way and coursework two-way. The real layout is two two-way folders:
 #
-# "The MacBook is the definitive source" and "I can work from both machines" are
-# mutually exclusive in Syncthing's model, so they are split rather than fudged:
+#   snhu-coursework   ~/Sync/snhu-coursework   assignments, submissions, notes
+#   snhu-library      ~/Sync/snhu-library      per-course textbooks
 #
-#   books   Mac sendonly -> Linux receiveonly.  One definitive copy. Linux reads.
-#   snhu    sendreceive both ways.              Edit anywhere, resolve conflicts.
+# Both are sendreceive because both machines are worked from. Simultaneous edits
+# to one file produce a .sync-conflict-<date>-* file next to it rather than a
+# silent winner. That is Syncthing refusing to guess; resolve by hand.
 #
-# A receiveonly folder does NOT silently delete files that exist only on Linux.
-# It flags them as "Local Additions" and waits. They disappear only if you press
-# "Revert Local Changes" in the UI. That button is the one destructive thing
-# here, see the migration note in docs/sync.md before pressing it.
+# WHY overrideFolders MATTERS
+#
+# It is true, so this file wins and the GUI loses on every switch. That is the
+# point: the repo describes the machine. It also nearly caused a disaster. This
+# module used to declare folders named `snhu` and `books` that the Mac never
+# shared. Left alone, the next `home-manager switch` would have deleted the real
+# snhu-coursework and snhu-library folders and the Mac device from the config.
+# If you set something up in the GUI, put it here in the same sitting.
 #
 # WHAT IS DELIBERATELY NOT SYNCED
 #
 # The Calibre library. metadata.db is SQLite, and two machines writing it
 # produces .sync-conflict copies of the database and a corrupted library. The
-# whole point of consolidating onto StoragePrime was to have exactly one. Use
-# Calibre's content server to read the library from the Mac.
+# library lives once, on StoragePrime. Read it from the Mac with Calibre's
+# content server.
 #
-# TRANSPORT
+# ~/Documents/Education/Books is not synced either. It is the source material we
+# already imported into Calibre, not a working set.
 #
-# Over Tailscale. No port forwarding (22000/tcp+udp, 21027/udp discovery stay
-# shut), no public relay servers, and it behaves the same at home or on campus.
-# Syncthing is already end-to-end encrypted; Tailscale is about reachability and
-# not having to punch holes in anything.
+# REACHABILITY, THE SHARP EDGE
 #
-# THE GUI
+# globalAnnounceEnabled and relaysEnabled are both off, so this machine is never
+# announced to Syncthing's public infrastructure. The cost is real: discovery is
+# then LOCAL ONLY. The two machines find each other over the LAN and nothing
+# else. When the MacBook leaves the house, sync stops until it comes back.
 #
-# 127.0.0.1:8384, reachable as http://syncthing.test:8384 because the dnsmasq in
-# `nix run .#sites` answers *.test with 127.0.0.1. Bare host:port is not how we
-# work here.
+# The fix is a static Tailscale address on the device below, not turning global
+# discovery back on. See docs/sync.md.
 
 let
-  # The MacBook's device ID, from `syncthing cli show system` or Actions -> Show
-  # ID in its GUI.
-  #
-  # A device ID is a PUBLIC KEY fingerprint, not a secret. Knowing it lets you
-  # *offer* to sync; the other side must still accept the introduction. So it is
-  # a reference and belongs in this repo. See .agents/rules.md.
-  #
-  # Empty until the Mac exists. While empty, the folders are still created and
-  # versioned locally, they are just not shared with anything, so this module
-  # evaluates and switches cleanly before the Mac is ever paired.
-  macbookId = "";
-  paired = macbookId != "";
+  # Device IDs are public key fingerprints, not secrets. Knowing one lets you
+  # *offer* to sync; the other side must still accept. So they are references
+  # and belong in this repo. See .agents/rules.md.
+  macbook = "4IM7O6G-XZONB7G-UUJSTYX-JR7CTR6-QQFE3HD-YTMK6IL-J66BG26-MUOMGQR";
 
-  edu = "${config.home.homeDirectory}/Documents/Education";
-
-  # Keep a year of replaced/deleted files, thinning out as they age. This is the
-  # safety net for the one-way folder: if something is deleted on the Mac, that
-  # deletion propagates here, and without versioning the Linux copy is simply
-  # gone. .stversions is excluded from restic in scripts/backup.sh.
-  versioning = {
-    type = "staggered";
-    params = {
-      cleanInterval = "3600";
-      maxAge = "31536000"; # 1 year, in seconds
-    };
-  };
+  sync = "${config.home.homeDirectory}/Sync";
 in
 {
-  # Linux only, on purpose: ~/nix-config is only applied on this machine. The
-  # darwin config stays in the flake in case that changes, but the Mac side of
-  # Syncthing is set up through its own GUI. See docs/sync.md.
+  # Linux only. This repo is applied here and nowhere else, see the note in
+  # flake.nix about the darwin config being kept but unused. The Mac's side of
+  # Syncthing is configured through its own GUI.
   services.syncthing = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
 
-    # Take ownership of the config. Without these, hand edits in the GUI drift
-    # away from this file and the repo stops describing the machine.
     overrideDevices = true;
     overrideFolders = true;
 
     settings = {
       gui.address = "127.0.0.1:8384";
 
-      # Do not announce to Syncthing's public discovery servers or fall back to
-      # public relays. Tailscale is the transport, so neither is needed, and
-      # both would leak that this machine exists to third parties.
       options = {
+        # Not announced to Syncthing's public discovery, and no public relays.
+        # Local discovery still works, which is how the Mac is found today.
         globalAnnounceEnabled = false;
         relaysEnabled = false;
         urAccepted = -1; # decline usage reporting
       };
 
-      devices = lib.optionalAttrs paired {
-        macbook = { id = macbookId; };
+      devices."Samuels-MacBook-Pro-M4" = {
+        id = macbook;
+        # addresses = [ "tcp://<mac>.<tailnet>.ts.net:22000" ];
+        # Uncomment once the Mac's tailnet name is known. Until then the two
+        # only find each other on the LAN. See the reachability note above.
       };
 
       folders = {
-        # Coursework. Two way, because it is actively edited on both machines.
-        # Simultaneous edits to the same file produce .sync-conflict-* files
-        # rather than silently picking a winner.
-        "snhu" = {
-          id = "snhu";
-          path = "${edu}/SNHU";
+        # Coursework. Staggered versioning keeps a year of replaced and deleted
+        # files, thinning with age. This is the folder that holds submitted work,
+        # so a deletion propagating from the Mac must be recoverable.
+        "snhu-coursework" = {
+          id = "snhu-coursework";
+          path = "${sync}/snhu-coursework";
           type = "sendreceive";
-          devices = lib.optionals paired [ "macbook" ];
-          inherit versioning;
+          devices = [ "Samuels-MacBook-Pro-M4" ];
+          versioning = {
+            type = "staggered";
+            params.maxAge = "31536000"; # 1 year, in seconds
+          };
         };
 
-        # Books. One way. The Mac decides what exists; this machine reads.
-        "books" = {
-          id = "books";
-          path = "${edu}/Books";
-          type = "receiveonly";
-          devices = lib.optionals paired [ "macbook" ];
-          inherit versioning;
+        # Course textbooks. Trashcan rather than staggered: these are large PDFs
+        # that rarely change, so keeping every historical revision buys nothing.
+        # 90 days of "I deleted that by mistake" is the whole requirement.
+        "snhu-library" = {
+          id = "snhu-library";
+          path = "${sync}/snhu-library";
+          type = "sendreceive";
+          devices = [ "Samuels-MacBook-Pro-M4" ];
+          versioning = {
+            type = "trashcan";
+            params.cleanoutDays = "90";
+          };
         };
       };
     };
