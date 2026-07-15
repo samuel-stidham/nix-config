@@ -14,8 +14,14 @@
 # nightly, so a nightly scrub buys nothing and just adds wear and contention.
 #
 # Usage:
-#   ./btrfs-scrub.sh           # scrub all btrfs mounts, mail on failure
-#   ./btrfs-scrub.sh --dry-run # show what would be scrubbed, change nothing
+#   ./btrfs-scrub.sh                 # every btrfs mount
+#   ./btrfs-scrub.sh /path/to/mount  # just that one, which is how the timers call it
+#   ./btrfs-scrub.sh --dry-run       # show what would be scrubbed, change nothing
+#
+# The timers pass a single mount on purpose. Each drive is scrubbed on its own
+# day, because a scrub saturates the disk it is reading and the two of them at
+# once would contend for the same I/O budget for hours. Staggering costs nothing
+# and keeps the machine usable.
 #
 # Requires a passwordless sudo rule for the scrub, see bootstrap.sh:
 #   samuelstidham ALL=(root) NOPASSWD: /usr/bin/btrfs scrub *
@@ -23,14 +29,27 @@ set -uo pipefail
 
 MAILTO="${SCRUB_MAILTO:-dqfan2012@gmail.com}"
 DRY=0
-[ "${1:-}" = "--dry-run" ] && DRY=1
+TARGET=""
 
-# Every mount worth checking. A mount that is absent or not btrfs is skipped, so
-# this stays correct while WorkDrive is still exfat.
-CANDIDATES=(
-  /media/samuelstidham/StoragePrime
-  /media/samuelstidham/WorkDrive
-)
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY=1 ;;
+    /*)        TARGET="$arg" ;;
+    *)         echo "unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
+# One mount if asked for it, otherwise every btrfs mount worth checking. A mount
+# that is absent or not btrfs is skipped rather than failing, so this stays
+# correct if a drive is unplugged or not yet converted.
+if [ -n "$TARGET" ]; then
+  CANDIDATES=("$TARGET")
+else
+  CANDIDATES=(
+    /media/samuelstidham/StoragePrime
+    /media/samuelstidham/WorkDrive
+  )
+fi
 
 mounts=()
 for m in "${CANDIDATES[@]}"; do

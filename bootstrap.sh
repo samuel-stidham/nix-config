@@ -503,6 +503,138 @@ savvy() {
   echo "Reinstall savvy from its upstream installer into ~/.savvy."
 }
 
+mount_drives() {
+  log "bulk drive mounts (fstab)"
+  # Pin both btrfs drives to explicit mount points, by UUID.
+  #
+  # This is not about auto-mounting, udisks already does that. It is about the
+  # PATH being the same everywhere. Ubuntu's udisks mounts at
+  # /media/$USER/LABEL, Fedora and Bazzite mount at /run/media/$USER/LABEL. Six
+  # files in this repo and calibre's library_path hardcode /media/samuelstidham,
+  # so on Bazzite every one of them would quietly point at nothing: restic would
+  # back up an empty directory, the scrubs would skip, calibre would find no
+  # library. An fstab entry makes the path ours instead of the distro's.
+  #
+  # /etc does not survive a reinstall, which is exactly why this lives in
+  # bootstrap.sh: run it on the new machine and the paths come back.
+  #
+  # Options that matter:
+  #   nofail                     a missing drive must never block the boot
+  #   x-systemd.device-timeout   fail fast instead of waiting 90s for it
+  #   compress=zstd:3            belt and braces with the on-disk property
+  #   noatime                    no write amplification just for reads
+  if [ "$ATOMIC" = 1 ]; then
+    echo "Atomic base keeps /etc writable, so fstab still applies here."
+  fi
+
+  # lsblk, not blkid. blkid needs root to probe and returns an empty string for a
+  # normal user, which would make this skip both drives while reporting success.
+  # lsblk reads the same data unprivileged.
+  local sp_uuid wd_uuid
+  sp_uuid="$(lsblk -no UUID /dev/disk/by-label/StoragePrime 2>/dev/null | head -1)"
+  wd_uuid="$(lsblk -no UUID /dev/disk/by-label/WorkDrive 2>/dev/null | head -1)"
+
+  local opts="compress=zstd:3,noatime,nofail,x-systemd.device-timeout=10"
+  local changed=0
+
+  _add_mount() {
+    local uuid="$1" mnt="$2" label="$3"
+    if [ -z "$uuid" ]; then
+      echo "  $label not found by label, skipping"
+      return
+    fi
+    if grep -q "$uuid" /etc/fstab 2>/dev/null; then
+      echo "  $label already in fstab"
+      return
+    fi
+    sudo mkdir -p "$mnt"
+    printf 'UUID=%s  %s  btrfs  %s  0 0\n' "$uuid" "$mnt" "$opts" | sudo tee -a /etc/fstab >/dev/null
+    echo "  added $label -> $mnt"
+    changed=1
+  }
+
+  _add_mount "$sp_uuid" /media/samuelstidham/StoragePrime StoragePrime
+  _add_mount "$wd_uuid" /media/samuelstidham/WorkDrive WorkDrive
+
+  if [ "$changed" = 1 ]; then
+    # A bad fstab can leave the machine unbootable, so prove it parses before
+    # trusting it. mount -a is the honest test.
+    sudo systemctl daemon-reload
+    if sudo mount -a; then
+      echo "fstab applied and mounted"
+    else
+      echo "MOUNT FAILED. Fix /etc/fstab before rebooting." >&2
+      return 1
+    fi
+  fi
+  # btrfs stores ownership, unlike exfat, so a fresh filesystem root is root:root
+  # and the user cannot write to it. exfat faked it with uid= at mount time.
+  sudo chown "$USER:$USER" /media/samuelstidham/StoragePrime /media/samuelstidham/WorkDrive 2>/dev/null || true
+}
+
+drives_stay_awake() {
+  log "keep the bulk drives spun up"
+  # Two different problems get confused here, so be explicit:
+  #
+  #   mounting   fstab, see mount_drives. Without it udisks only mounts when you
+  #              click the drive in a file manager.
+  #   spin down  this function. A mounted drive still parks itself when idle, and
+  #              you wait for it to spin back up on the next access.
+  #
+  # And spin down is itself two mechanisms:
+  #
+  #   APM / standby timer   generic ATA, hdparm -B 255 -S 0 turns both off.
+  #   WD IntelliPark        a SEPARATE firmware timer on WD desktop drives that
+  #                         parks the heads after ~8 seconds. hdparm -B does not
+  #                         touch it. Only idle3ctl does.
+  #
+  # WorkDrive is a WDC WD80EZAZ, which is exactly the drive IntelliPark is
+  # infamous on. StoragePrime is a Seagate IronWolf, a NAS drive built for 24/7,
+  # so it mostly just needs APM off.
+  #
+  # Parking is not only a delay, it is wear. These drives are rated for a few
+  # hundred thousand load cycles, and an 8 second timer burns through them.
+  local sp="/dev/disk/by-id/ata-ST12000VN0008-2YS101_ZRT0TGY0"
+  local wd="/dev/disk/by-id/ata-WDC_WD80EZAZ-11TDBA0_1EK7ET2Z"
+
+  if ! command -v hdparm >/dev/null 2>&1; then
+    case "$FAMILY" in
+      debian) pkg_install hdparm ;;
+      fedora) pkg_install hdparm ;;
+    esac
+  fi
+
+  # A udev rule rather than a one shot service: it fires on boot AND on hotplug,
+  # and it survives the drive being unplugged and returned. Matched on serial, so
+  # it can never apply to the wrong disk if sda and sdb ever swap.
+  sudo tee /etc/udev/rules.d/69-drives-stay-awake.rules >/dev/null <<'EOF'
+# Keep the bulk spinners awake. -B 255 disables APM, -S 0 disables the standby
+# timer. Matched by serial so a device rename cannot misapply these.
+ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="ZRT0TGY0", RUN+="/usr/sbin/hdparm -B 255 -S 0 /dev/%k"
+ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd[a-z]", ENV{ID_SERIAL_SHORT}=="1EK7ET2Z", RUN+="/usr/sbin/hdparm -B 255 -S 0 /dev/%k"
+EOF
+  sudo udevadm control --reload-rules
+  sudo udevadm trigger --subsystem-match=block --action=change
+  echo "udev rule installed and triggered"
+
+  # Apply now too, so it takes effect without waiting for a reboot.
+  sudo hdparm -B 255 -S 0 "$sp" >/dev/null 2>&1 && echo "  StoragePrime: APM and standby off"
+  sudo hdparm -B 255 -S 0 "$wd" >/dev/null 2>&1 && echo "  WorkDrive: APM and standby off"
+
+  # IntelliPark is stored in the drive's own firmware, so this is a ONE TIME
+  # change that persists across reboots and reinstalls. It needs a power cycle,
+  # not a warm reboot, to take effect.
+  echo
+  echo "WorkDrive is a WD80EZAZ, which parks its heads on a firmware timer that"
+  echo "hdparm cannot reach. Check and disable it, it is a one time change:"
+  echo "  nix shell nixpkgs#idle3tools -c sudo idle3ctl -g $wd    # read it"
+  echo "  nix shell nixpkgs#idle3tools -c sudo idle3ctl -d $wd    # disable it"
+  echo "Then FULLY POWER OFF, not reboot, for the firmware to accept it."
+  echo
+  echo "Confirm parking is happening at all:"
+  echo "  sudo smartctl -A $wd | grep -i load_cycle"
+}
+
 btrfs_scrub_sudo() {
   log "btrfs scrub sudo rule"
   # The monthly scrub runs as a USER systemd timer, so msmtp's passwordeval can
@@ -672,6 +804,8 @@ all() {
   system_layer
   nvidia_driver
   virtualbox_extras
+  mount_drives
+  drives_stay_awake
   btrfs_scrub_sudo
   tailscale_net
   nm_static_ip
