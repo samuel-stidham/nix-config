@@ -50,8 +50,11 @@ hardcoded to my machine, so fork and adjust before you use it.
 - [docs/backup.md](docs/backup.md) — the restic backup and restore runbook, what
   is backed up and what is deliberately not.
 - [docs/sync.md](docs/sync.md) — Syncthing between the MacBook and this machine:
-  SNHU coursework and library, why the Calibre library is not synced, and why
-  the two only find each other on the LAN.
+  SNHU coursework and library, why the Calibre library is not synced, and how the
+  two reach each other over Tailscale.
+- [docs/home-lab.md](docs/home-lab.md) — Forgejo and Atlantis on the tailnet: the
+  wildcard DNS and certificate, the one nginx that owns port 443, and why none of
+  it is reachable from the internet.
 
 ## Usage
 
@@ -93,8 +96,13 @@ foreground process group. Data persists under `~/.local/share/dev-services`. See
 nix run .#sites
 ```
 
-This serves any folder in `~/sites` at `<folder>.test` through nginx, php-fpm,
-and dnsmasq. It needs a one-time system setup, which is in `SITES.md`.
+This serves any folder in `~/sites` at `<folder>.test` through php-fpm and
+dnsmasq. It needs a one-time system setup, which is in `SITES.md`.
+
+nginx is not in this stack. It runs as a systemd user service, because it also
+fronts Forgejo. Every site therefore answers at `<folder>.home.samuelstidham.me`
+too, on a real certificate and reachable from the MacBook. See
+[docs/home-lab.md](docs/home-lab.md).
 
 `sites` is also what runs **dnsmasq**, which answers `*.test`. Without it only
 the names hardcoded in `/etc/hosts` resolve, so start this stack before expecting

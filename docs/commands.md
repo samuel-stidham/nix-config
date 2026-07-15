@@ -24,8 +24,13 @@ detail.
 | --- | --- |
 | `zellij -n servers --layout servers` | Both stacks side by side, session named `servers` so a second launch attaches instead of starting a conflicting copy. |
 | `nix run .#services` | MariaDB, PostgreSQL, Redis, MongoDB, MinIO, Meilisearch. Data under `~/.local/share/dev-services`. |
-| `nix run .#sites` | nginx, php-fpm, **dnsmasq**. Serves `~/sites/<name>` at `<name>.test`. |
-| `secure_sites` | Generate a one year self signed cert for every folder in `~/sites`. Run after adding a site, or yearly. |
+| `nix run .#sites` | php-fpm and **dnsmasq**. Serves `~/sites/<name>` at `<name>.test`. nginx is a systemd service now, see below. |
+| `secure_sites` | Generate a one year self signed cert for every folder in `~/sites`. Only for `.test`, which no CA will ever issue for. |
+| `systemctl --user status nginx` | The one nginx. Serves `*.test` and `*.home.samuelstidham.me`, and owns port 443. |
+| `./scripts/home-certs.sh --staging` | Rehearse the wildcard cert against Let's Encrypt staging. No rate limit spent. |
+| `./scripts/home-certs.sh` | Issue or renew `*.home.samuelstidham.me`. The daily timer runs this. |
+| `./bootstrap.sh firewall_tailnet_only` | Print the ufw rules that put the services on the tailnet only. |
+| `tailscale status` | Both machines, both Connected. |
 
 `sites` is the stack that answers `*.test`. Without it running, only names
 hardcoded in `/etc/hosts` resolve.

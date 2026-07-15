@@ -83,13 +83,26 @@ exposed.
 
 ## sites
 
-Three processes serve `~/sites/<name>` at `<name>.test`:
+Two processes in this stack serve `~/sites/<name>` at `<name>.test`, plus nginx,
+which is no longer one of them:
 
 | Process | Role |
 | --- | --- |
-| **nginx** | One wildcard vhost for `*.test`, with a small driver layer. |
 | **php-fpm** | PHP 8.5 over a unix socket, from `parts/php.nix`. The same PHP the CLI uses. |
 | **dnsmasq** | Answers `*.test` on `127.0.0.1`, listening on port **5333**. |
+
+**nginx moved out of this stack.** It is a systemd user service now, in
+[home/web.nix](../home/web.nix), because it fronts Forgejo as well as the dev
+sites and HTTPS to the git server cannot depend on this stack being started by
+hand. See [docs/home-lab.md](home-lab.md).
+
+That has one visible consequence. nginx is always up, so a dev site returns
+**502** when this stack is down, rather than refusing the connection. That is the
+honest answer: php is not running.
+
+Every site also answers to `<name>.home.samuelstidham.me`, on a real certificate
+and reachable from the MacBook. Same files, same nginx, no extra setup. `.test`
+stays because it works with no internet at all.
 
 ### The document root driver
 
