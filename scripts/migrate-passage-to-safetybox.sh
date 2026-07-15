@@ -12,7 +12,7 @@
 # kept for one job, holding the safetybox passphrase at safetybox/passphrase, so
 # automation can unlock the vault non-interactively. Store that passphrase once,
 # after `safetybox init`:
-#   passage insert -m safetybox/passphrase   # paste the passphrase, then Ctrl-D
+#   passage insert safetybox/passphrase   # hidden prompt, entered twice
 set -euo pipefail
 
 store="${PASSAGE_STORE:-$HOME/.passage/store}"
@@ -53,4 +53,4 @@ echo
 echo "Migrated $migrated secrets. Verify them:"
 echo "  safetybox list"
 echo "Keep passage. It now holds only the safetybox passphrase at safetybox/passphrase."
-echo "If you have not stored it yet: passage insert -m safetybox/passphrase"
+echo "If you have not stored it yet: passage insert safetybox/passphrase"
