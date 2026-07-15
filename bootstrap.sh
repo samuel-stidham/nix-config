@@ -501,6 +501,35 @@ savvy() {
   echo "Reinstall savvy from its upstream installer into ~/.savvy."
 }
 
+btrfs_scrub_sudo() {
+  log "btrfs scrub sudo rule"
+  # The monthly scrub runs as a USER systemd timer, so msmtp's passwordeval can
+  # read the Gmail password out of passage without a root unit reaching into the
+  # user's secret store. Only the scrub itself needs root, so grant exactly that
+  # and nothing else.
+  #
+  # /usr/bin/btrfs is deliberate. sudo's secure_path strips ~/.nix-profile/bin, so
+  # `sudo btrfs` would never resolve the Nix build anyway. The distro binary is
+  # the stable path, and on Bazzite btrfs-progs is part of the image.
+  if [ "$FAMILY" = "unknown" ]; then
+    echo "Unknown family, skipping." >&2
+    return
+  fi
+  local f=/etc/sudoers.d/btrfs-scrub
+  printf '%s ALL=(root) NOPASSWD: /usr/bin/btrfs scrub *\n' "$USER" | sudo tee "$f" >/dev/null
+  sudo chmod 0440 "$f"
+  # An invalid sudoers file can lock you out of sudo entirely, so validate it and
+  # remove it if it does not parse.
+  if sudo visudo -cf "$f" >/dev/null 2>&1; then
+    echo "installed $f"
+  else
+    sudo rm -f "$f"
+    echo "sudoers rule failed validation and was removed" >&2
+    return 1
+  fi
+  echo "Enable the timer: systemctl --user enable --now btrfs-scrub.timer"
+}
+
 tailscale_net() {
   log "Tailscale"
   # A stable overlay IP and MagicDNS name that follow this machine across
@@ -588,6 +617,7 @@ all() {
   system_layer
   nvidia_driver
   virtualbox_extras
+  btrfs_scrub_sudo
   tailscale_net
   nm_static_ip
   vendor_apps

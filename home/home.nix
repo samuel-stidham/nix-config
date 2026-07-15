@@ -5,6 +5,7 @@
     ./languages.nix
     ./libraries.nix
     ./filesystems.nix
+    ./btrfs-scrub.nix
     ./python.nix
     ./fish.nix
     ./jdks.nix
