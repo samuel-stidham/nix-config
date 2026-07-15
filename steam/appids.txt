@@ -1,0 +1,48 @@
+105600	Terraria
+251570	7 Days to Die
+311690	Enter the Gungeon
+367520	Hollow Knight
+391540	Undertale
+413150	Stardew Valley
+427520	Factorio
+433340	Slime Rancher
+457140	Oxygen Not Included
+489830	The Elder Scrolls V: Skyrim Special Edition
+526870	Satisfactory
+599140	Graveyard Keeper
+606150	Moonlighter
+736260	Baba Is You
+751780	Forager
+881100	Noita
+1004640	FINAL FANTASY TACTICS - The Ivalice Chronicles
+1151340	Fallout 76
+1203620	Enshrouded
+1253920	Rogue Legacy 2
+1267910	Melvor Idle
+1281930	tModLoader
+1295510	DRAGON QUEST XI S: Echoes of an Elusive Age – Definitive Edition
+1318690	shapez
+1390190	APICO
+1621690	Core Keeper
+1623730	Palworld
+1657630	Slime Rancher 2
+1658150	Moonstone Island
+1671210	DELTARUNE
+1794680	Vampire Survivors
+1805110	Solarpunk
+1898300	ASKA
+2142790	Fields of Mistria
+2162800	shapez 2 - Factory
+2373630	Moonring
+2379780	Balatro
+2499860	DRAGON QUEST VII Reimagined
+2521600	Little-Known Galaxy
+2623190	The Elder Scrolls IV: Oblivion Remastered
+2681030	Outbound
+2701660	DRAGON QUEST III HD-2D Remake
+2779120	Modulus: Factory Automation
+2795090	MR FARMBOY
+2893570	DRAGON QUEST I & II HD-2D Remake
+3071240	Voodoo Fishin'
+3187030	Satisfactory Modeler
+3405340	Megabonk

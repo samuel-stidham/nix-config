@@ -33,6 +33,7 @@
     unzip
     rsync
     openssl     # used by the secure_sites fish function, and generally handy
+    restic      # encrypted, deduped backups to S3, driven by scripts/backup.sh
 
     # HTTP clients. httpie is the classic (http/https), xh is its fast Rust
     # rewrite, curlie wraps curl with httpie-style UX.

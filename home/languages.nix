@@ -157,6 +157,7 @@ in
     # luajit CLI dropped. You had none installed, its headers collide with
     # lua5_5, LOVE bundles its own, and the apt libluajit for plugins stays on
     # apt. Add it back isolated if you ever need the standalone luajit.
+    lua5_5.pkgs.luarocks   # rocks package manager, built against Lua 5.5
     love
 
     # TeXstudio. Confirmed 4.9.5. It has no language folder. It is a GUI app, so

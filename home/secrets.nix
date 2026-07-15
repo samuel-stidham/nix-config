@@ -1,5 +1,11 @@
 { config, pkgs, lib, ... }:
 
+let
+  # Your own age-encrypted vault CLI, built from the tagged GitHub release. See
+  # parts/safetybox.nix. This is the secret store going forward.
+  safetybox = import ../parts/safetybox.nix pkgs;
+in
+
 # Hardening tools and the global secret-scanning guard. This codifies the
 # secrets-install programs and makes gitleaks and trufflehog global, so they are
 # available and enforced in every repo. The full secrets workflow is planned in
@@ -13,14 +19,24 @@
 # The private keys are never in any repo. This completes the ssh-git-identity phase.
 
 {
-  home.packages = with pkgs; [
-    # Secret store and backend. Confirmed passage 1.7.4 and age 1.3.1.
+  home.packages = [
+    # Primary secret store. safetybox owns every secret and all key material,
+    # including the ssh and gpg private keys, under a namespaced vault.
+    safetybox
+  ] ++ (with pkgs; [
+    # passage is kept for one job only: it holds the safetybox passphrase at
+    # safetybox/passphrase, so automation can unlock the vault non-interactively:
+    #   safetybox reveal --env --prefix global \
+    #     --passphrase-file (passage show safetybox/passphrase | psub)
+    # passage is unlocked by its own age identity, which is the single root of
+    # trust carried out of band, stored in 1Password with a KeePassXC backup.
+    # Confirmed passage 1.7.4 and age 1.3.1.
     passage
     age
     # Secret scanners, global. Confirmed gitleaks 8.30.1 and trufflehog 3.95.7.
     gitleaks
     trufflehog
-  ];
+  ]);
 
   # Global pre-commit guard. core.hooksPath below points every repo at this hook,
   # so no secret can be committed in any repo. It calls the pinned gitleaks by

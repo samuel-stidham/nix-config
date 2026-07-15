@@ -29,6 +29,7 @@
     # GUI apps moved off snaps to Nix during de-snap. Versions are newer or on
     # par with the snaps they replace, so exact-version matching is not needed.
     bruno                  # API client
+    dbeaver-bin            # SQL GUI. Binary: dbeaver
     eclipses.eclipse-java  # Eclipse IDE for Java
     ghidra                 # reverse engineering
     halloy                 # IRC client
@@ -36,9 +37,10 @@
     obsidian               # notes, Electron and unfree
     racket                 # Racket language and DrRacket
     spotify                # music, Electron and unfree
-    # TablePlus is NOT here: the nixpkgs build lags the vendor release, so it
-    # comes from TablePlus's own apt repo in bootstrap.sh (vendor_debs), like
-    # Chrome and VS Code.
+    # TablePlus was here before as a vendor apt repo, since the nixpkgs build
+    # lagged. It is replaced by dbeaver-bin above, which Nix owns and installs
+    # the same way on every distro. That removed the TablePlus vendor branch
+    # from bootstrap.sh. dbeaver-bin covers the same databases and more.
 
     # PrismLauncher from Nix, so it reads the Nix JDKs under ~/.local/share/jdks
     # directly with no Flatpak sandbox grant. Replaces the apt prismlauncher.
