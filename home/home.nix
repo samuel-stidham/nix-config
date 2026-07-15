@@ -3,6 +3,7 @@
 {
   imports = [
     ./languages.nix
+    ./libraries.nix
     ./python.nix
     ./fish.nix
     ./jdks.nix

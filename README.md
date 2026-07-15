@@ -32,9 +32,23 @@ hardcoded to my machine, so fork and adjust before you use it.
 - `parts/php.nix` is the shared PHP 8.5 build, used by the CLI and by php-fpm.
 - `doom/` is the Doom Emacs user config, with evil mode for vim keybindings.
 - `bootstrap.sh` installs Nix and everything Nix does not own, for a fresh
-  machine.
+  machine. It detects the distro family and dispatches, so the same script works
+  on Ubuntu, Fedora, and Bazzite.
+- `scripts/` holds the runbook scripts: `backup.sh` (restic), `reorg.sh`,
+  `steam-snapshot.sh` / `steam-restore.sh`, `migrate-passage-to-safetybox.sh`,
+  and `keep-awake.sh`.
+- `docs/` holds the deep documentation, see below.
 - `.agents/` holds the agent rules for this repo. `SECRETS.md`, `SCANNING.md`,
   `PUBLISHING.md`, and `SITES.md` hold the plans and the runbooks.
+
+## Documentation
+
+- [docs/dev-stack.md](docs/dev-stack.md) — the local dev stack, the `servers`
+  zellij layout, and how `*.test` resolution actually works.
+- [docs/secrets.md](docs/secrets.md) — safetybox, passage, and how every shell
+  gets its credentials without a plaintext file.
+- [docs/backup.md](docs/backup.md) — the restic backup and restore runbook, what
+  is backed up and what is deliberately not.
 
 ## Usage
 
@@ -46,6 +60,19 @@ env HOME_MANAGER_BACKUP_EXT=backup ./result/activate
 ```
 
 The backup flag saves any file the switch would overwrite as `<file>.backup`.
+
+### Run the whole dev stack at once
+
+```bash
+zellij -n servers --layout servers
+```
+
+This is the everyday command. It opens the `servers` zellij layout, which runs
+both stacks side by side in one tab plus two free shells, and names the session
+`servers` so a second launch attaches instead of starting a conflicting copy.
+The layout is defined in `home/terminals.nix`.
+
+Think of it as the Laravel Herd equivalent: one command, whole backend up.
 
 ### Run the local dev services
 
@@ -65,6 +92,10 @@ nix run .#sites
 
 This serves any folder in `~/sites` at `<folder>.test` through nginx, php-fpm,
 and dnsmasq. It needs a one-time system setup, which is in `SITES.md`.
+
+`sites` is also what runs **dnsmasq**, which answers `*.test`. Without it only
+the names hardcoded in `/etc/hosts` resolve, so start this stack before expecting
+`atlantis.test` or any `<folder>.test` name to work in a browser.
 
 ### Run a Nix GL app against the NVIDIA driver
 
