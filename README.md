@@ -49,6 +49,8 @@ hardcoded to my machine, so fork and adjust before you use it.
   gets its credentials without a plaintext file.
 - [docs/backup.md](docs/backup.md) — the restic backup and restore runbook, what
   is backed up and what is deliberately not.
+- [docs/sync.md](docs/sync.md) — Syncthing between the MacBook and this machine:
+  books one way, coursework both ways, and why the Calibre library is not synced.
 
 ## Usage
 
