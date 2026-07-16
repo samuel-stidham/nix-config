@@ -26,7 +26,7 @@
 #   ./bootstrap.sh nix        # run one section, by name
 set -euo pipefail
 
-FLAKE_DIR="${FLAKE_DIR:-$HOME/nix-config}"
+FLAKE_DIR="${FLAKE_DIR:-$HOME/code/samuel-stidham/nix-config}"
 HM_TARGET="samuelstidham@x86_64-linux"
 
 log() { printf '\n=== %s ===\n' "$1"; }

@@ -16,7 +16,33 @@
 # bootstrap.sh installs.
 
 let
-  scrubScript = "${config.home.homeDirectory}/nix-config/scripts/btrfs-scrub.sh";
+  # The script goes INTO the store, rather than the unit pointing at a path in a
+  # git checkout. The old form was:
+  #
+  #   scrubScript = "${config.home.homeDirectory}/nix-config/scripts/btrfs-scrub.sh";
+  #
+  # which quietly hardcoded where this repo lives. Moving the repo broke all three
+  # timers at once, including the cert renewal, and nothing said so: a systemd
+  # oneshot pointing at a missing file just fails at 03:00 on the 1st.
+  #
+  # ../scripts/ is relative to THIS file and resolved at eval time, so the unit
+  # ends up referencing an immutable /nix/store path. The repo can now live
+  # anywhere, or be deleted, and the timers still run.
+  #
+  # The tradeoff is real: editing the script no longer takes effect until the next
+  # `home-manager switch`. For something that runs monthly at 3am, that is the
+  # right trade. It also means the script that runs is the one that was reviewed.
+  scrubScript = pkgs.writeShellApplication {
+    name = "btrfs-scrub";
+    # The script shells out to these. A systemd user unit gets a minimal PATH, and
+    # writeShellApplication puts exactly this set on it, so a missing tool is a
+    # build error rather than a 3am failure.
+    runtimeInputs = with pkgs; [ msmtp coreutils gnugrep util-linux ];
+    text = builtins.readFile ../scripts/btrfs-scrub.sh;
+    # The script sets its own `set -uo pipefail` on purpose: it must survive a
+    # scrub returning nonzero so it can mail the report.
+    bashOptions = [ ];
+  };
 
   # The btrfs drives, and the day each one is scrubbed. Add a drive here and it
   # gets a service and a timer automatically.
@@ -79,9 +105,11 @@ in
       Unit.Description = "Scrub ${mount} and mail on failure";
       Service = {
         Type = "oneshot";
-        ExecStart = "${pkgs.bash}/bin/bash ${scrubScript} ${mount}";
-        # The script needs passage, msmtp, btrfs, findmnt, and sudo. A user unit
-        # gets a minimal PATH, so hand it the profile explicitly.
+        ExecStart = "${scrubScript}/bin/btrfs-scrub ${mount}";
+        # passage and sudo still come from outside: passage is a user profile tool
+        # that must read ~/.passage, and btrfs/sudo are distro binaries on
+        # purpose, since sudo's secure_path cannot see the nix profile. See
+        # home/filesystems.nix.
         Environment = [
           "PATH=${config.home.profileDirectory}/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         ];

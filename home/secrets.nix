@@ -71,13 +71,30 @@ in
       init.defaultBranch = "main";
       core.hooksPath = "${config.xdg.configHome}/git/hooks";
     };
-    # Directory-tree identity. Under snhu-projects and nix-config, override the
-    # email to the snhu address. Using contents instead of a path means
-    # home-manager generates the included file itself, so no hand-written
-    # ~/.gitconfig-snhu is needed and the identity is fully declarative.
+    # Directory-tree identity. ~/code is laid out by IDENTITY, not by language and
+    # not by host, and each folder is named for its GitHub account:
+    #
+    #   ~/code/samuel-stidham/   samuel.stidham@snhu.edu, the portfolio identity
+    #   ~/code/dqfan2012/        dqfan2012@gmail.com, legacy and shrinking
+    #   ~/code/sandbox/          throwaway, no identity rule
+    #
+    # A repo is therefore correct by LOCATION, and nothing needs a per-repo
+    # override. That is the whole point. A `git config --local user.email` is
+    # untracked and invisible, so it is right on this machine and silently absent
+    # on a fresh clone. infra-backups had exactly that and would have committed as
+    # the wrong person on the MacBook.
+    #
+    # ONE rule per identity. This was two, because ~/nix-config sat outside ~/code
+    # and needed a line of its own. It lives under ~/code/samuel-stidham now, so
+    # the exception is gone rather than maintained.
+    #
+    # dqfan2012 gets no rule: it is still the global default above. When that
+    # identity is fully retired, the default flips and this list stays one line.
+    #
+    # contents rather than path means home-manager generates the included file, so
+    # no hand-written ~/.gitconfig-snhu exists and the identity is declarative.
     includes = [
-      { condition = "gitdir:~/code/snhu-projects/"; contents.user.email = "samuel.stidham@snhu.edu"; }
-      { condition = "gitdir:~/nix-config/"; contents.user.email = "samuel.stidham@snhu.edu"; }
+      { condition = "gitdir:~/code/samuel-stidham/"; contents.user.email = "samuel.stidham@snhu.edu"; }
     ];
   };
 

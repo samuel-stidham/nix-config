@@ -1,4 +1,10 @@
-{ pkgs, ... }:
+{ pkgs, config, ... }:
+
+let
+  # Where this repo lives. One binding, so moving the checkout is one edit here
+  # rather than a hunt through every module. Referenced by the zellij layout below.
+  flakeRef = "${config.home.homeDirectory}/code/samuel-stidham/nix-config";
+in
 
 # Terminals, themed Catppuccin Frappe and set to a Nerd Font. Ghostty and
 # alacritty are the dev terminals. The Cinnamon default, gnome-terminal, stays
@@ -58,11 +64,14 @@ in
         tab name="servers" focus=true {
             pane split_direction="vertical" {
                 pane split_direction="horizontal" {
+                    // The flake ref is built from homeDirectory and flakeDir,
+                    // not hardcoded. This pointed at ~/nix-config and broke the
+                    // moment the repo moved under ~/code/samuel-stidham.
                     pane command="nix" close_on_exit=false {
-                        args "run" "/home/samuelstidham/nix-config#services"
+                        args "run" "${flakeRef}#services"
                     }
                     pane command="nix" close_on_exit=false {
-                        args "run" "/home/samuelstidham/nix-config#sites"
+                        args "run" "${flakeRef}#sites"
                     }
                 }
                 pane split_direction="horizontal" {

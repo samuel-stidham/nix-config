@@ -24,7 +24,26 @@
 # lives in the user's passage store, and a root unit would have to reach into it.
 
 let
-  certScript = "${config.home.homeDirectory}/nix-config/scripts/home-certs.sh";
+  # In the store, not in a checkout. The old form pointed at
+  # ${config.home.homeDirectory}/nix-config/scripts/home-certs.sh, which meant
+  # this timer depended on the repo staying at one path forever. Moving the repo
+  # broke it silently, and the failure would have surfaced in October as an
+  # expired certificate with no obvious cause.
+  #
+  # ../scripts/ resolves at eval time relative to this file, so the unit points at
+  # an immutable /nix/store path. Editing the script now needs a switch, which for
+  # a daily renewal is the correct trade.
+  certScript = pkgs.writeShellApplication {
+    name = "home-certs";
+    # jq parses safetybox's JSON, openssl reports the cert, coreutils installs it.
+    # lego, passage, safetybox and systemctl come from PATH below, since they are
+    # profile or system tools rather than build inputs.
+    runtimeInputs = with pkgs; [ jq openssl coreutils ];
+    text = builtins.readFile ../scripts/home-certs.sh;
+    # The script handles its own failures and prints guidance, so do not let
+    # writeShellApplication impose -e on top of its `set -uo pipefail`.
+    bashOptions = [ ];
+  };
 in
 {
   home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.lego ];
@@ -33,7 +52,7 @@ in
     Unit.Description = "Renew the *.home.samuelstidham.me certificate";
     Service = {
       Type = "oneshot";
-      ExecStart = "${pkgs.bash}/bin/bash ${certScript}";
+      ExecStart = "${certScript}/bin/home-certs";
       # The script needs lego, passage, openssl, install, and systemctl to reload
       # nginx once the cert changes. A user unit gets a minimal PATH, so hand it
       # the profile explicitly. /run/current-system/sw/bin is where systemctl
