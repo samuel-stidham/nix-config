@@ -33,6 +33,7 @@
 1898300	ASKA
 2142790	Fields of Mistria
 2162800	shapez 2 - Factory
+2209900	Moonlight Peaks
 2373630	Moonring
 2379780	Balatro
 2499860	DRAGON QUEST VII Reimagined
@@ -46,3 +47,4 @@
 3071240	Voodoo Fishin'
 3187030	Satisfactory Modeler
 3405340	Megabonk
+3483510	The Adventures of Elliot: The Millennium Tales
