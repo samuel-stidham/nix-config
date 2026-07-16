@@ -383,13 +383,22 @@ flatpaks() {
   # Calibre is NOT here. It comes from its own binary installer, see calibre().
   # Upstream explicitly says not to use distro packages, and the Flatpak is
   # sandboxed, so it cannot see a library on /media without a filesystem grant.
+  # PrismLauncher is NOT here. It comes from Nix, see prismlauncher in apps.nix.
+  #
+  # Installing both is how this machine ended up with two launchers, one holding
+  # five instances and one holding none. They do not share data: the Nix build
+  # keeps instances in ~/.local/share/PrismLauncher, the Flatpak keeps its own
+  # under ~/.var/app/org.prismlauncher.PrismLauncher. Only the first is what
+  # MC_DIR in scripts/backup.sh backs up.
+  #
+  # The Flatpak is also the one that cannot run the Nix JDKs, because the sandbox
+  # cannot see /nix/store. That was papered over here with an instruction to
+  # grant ~/.local/share/jdks in Flatseal, which is a workaround for a sandbox we
+  # have no reason to be inside. The Nix build reads the JDKs directly.
   flatpak_install \
     com.github.tchx84.Flatseal \
     org.gimp.GIMP \
-    org.prismlauncher.PrismLauncher \
     io.ente.auth
-  echo "If PrismLauncher runs from Flatpak, grant it the Nix JDK folder with Flatseal:"
-  echo "  filesystem access to ~/.local/share/jdks"
 }
 
 # --------------------------------------------------------------------------
