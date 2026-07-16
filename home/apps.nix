@@ -44,6 +44,23 @@
 
     # PrismLauncher from Nix, so it reads the Nix JDKs under ~/.local/share/jdks
     # directly with no Flatpak sandbox grant. Replaces the apt prismlauncher.
+    # It needs /run/opengl-driver to exist, see the note below.
     prismlauncher
   ];
+
+  # PrismLauncher needs no wrapper. It needs /run/opengl-driver to exist.
+  #
+  # Its wrapper hardcodes `--set LD_LIBRARY_PATH /run/opengl-driver/lib:...`,
+  # which is the NixOS path for the GPU driver. That directory does not exist on
+  # this machine, so Prism found no GLX vendor and died four seconds into a
+  # launch with "Fatal: Could not initialize GLX".
+  #
+  # nixGL cannot fix that, which is worth writing down because it is the obvious
+  # thing to reach for and it is a dead end. The wrapper uses --set, not
+  # --prefix, so it REPLACES LD_LIBRARY_PATH and discards whatever nixGL exported
+  # before the app runs its first instruction.
+  #
+  # The fix is `./bootstrap.sh nix_opengl_driver`, which symlinks the Ubuntu
+  # NVIDIA libs into /run/opengl-driver/lib at boot. It is a system concern, not
+  # a per-app one: every Nix GUI app that touches the GPU looks there.
 }

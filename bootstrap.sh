@@ -716,6 +716,75 @@ tailscale_net() {
   echo "Then reach services by their tailnet name, e.g. forgejo, from any network."
 }
 
+nix_opengl_driver() {
+  log "expose the GPU driver at /run/opengl-driver for Nix apps"
+  # Every Nix GUI app that touches the GPU looks for the driver at
+  # /run/opengl-driver/lib. That is the NixOS convention, and NixOS populates it.
+  # On this machine it does not exist, so the apps find no GLX vendor and die.
+  #
+  # PrismLauncher is how this surfaced. Its wrapper hardcodes:
+  #
+  #   --set LD_LIBRARY_PATH /run/opengl-driver/lib:/nix/store/...
+  #
+  # so Minecraft launched, hit "Failed to create Vulkan instance: -9" and then
+  # "Fatal: Could not initialize GLX", and Prism died four seconds in. The real
+  # driver is Ubuntu's, in /usr/lib/x86_64-linux-gnu.
+  #
+  # WHY NOT nixGL
+  #
+  # nixGL is an input in flake.nix for exactly this class of problem, and it
+  # cannot help here. That wrapper uses --set, not --prefix, so it REPLACES
+  # LD_LIBRARY_PATH and throws away anything nixGL exported before the app's
+  # first instruction. Wrapping prismlauncher in nixGL changes nothing. This was
+  # confirmed the slow way.
+  #
+  # WHY ONLY THE NVIDIA LIBS, NOT ALL OF /usr/lib
+  #
+  # Symlinking the whole directory is the obvious shortcut and it is a trap.
+  # /run/opengl-driver/lib is FIRST on that LD_LIBRARY_PATH, ahead of every Nix
+  # store path, so the system's glibc and friends would shadow the ones the app
+  # was built against. Link the driver and nothing else.
+  #
+  # WHY A SERVICE AND NOT tmpfiles
+  #
+  # /run is a tmpfs, so this has to be recreated every boot. systemd-tmpfiles
+  # cannot glob a source, and the lib names carry the driver version
+  # (libGLX_nvidia.so.580.159.03), so a static list would rot on the next driver
+  # update. A oneshot that re-links at boot survives both.
+  if [ "$FAMILY" = "unknown" ]; then
+    echo "Unknown family, skipping." >&2
+    return
+  fi
+  if [ ! -e /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.0 ]; then
+    echo "No NVIDIA userspace libs found. Skipping, this is an NVIDIA-only fix."
+    return
+  fi
+
+  local u=/etc/systemd/system/nix-opengl-driver.service
+  sudo tee "$u" >/dev/null <<'EOF'
+[Unit]
+Description=Expose the system NVIDIA driver at /run/opengl-driver for Nix apps
+Documentation=https://github.com/NixOS/nixpkgs/issues/9415
+DefaultDependencies=no
+After=local-fs.target
+Before=display-manager.service graphical.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Only the nvidia libs. Everything else in /usr/lib would shadow the Nix store
+# paths that come after it on LD_LIBRARY_PATH.
+ExecStart=/bin/sh -c 'mkdir -p /run/opengl-driver/lib && find /usr/lib/x86_64-linux-gnu -maxdepth 1 -name "lib*nvidia*" -exec ln -sf {} /run/opengl-driver/lib/ \;'
+
+[Install]
+WantedBy=graphical.target
+EOF
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now nix-opengl-driver.service
+  echo "linked $(ls /run/opengl-driver/lib 2>/dev/null | wc -l) driver libs into /run/opengl-driver/lib"
+  echo "Verify: prismlauncher should now launch an instance without 'Could not initialize GLX'."
+}
+
 firewall_tailnet_only() {
   log "firewall: services on the tailnet only"
   # Forgejo, Atlantis and nginx all bind every interface, so today anything on
@@ -944,6 +1013,7 @@ all() {
   fish_login_shell
   system_layer
   nvidia_driver
+  nix_opengl_driver
   virtualbox_extras
   mount_drives
   drives_stay_awake
