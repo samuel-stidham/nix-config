@@ -1,6 +1,20 @@
 # add_to_path is defined in functions.fish, its home. env.fish sources
 # functions.fish before home/fish.nix sources this file, so the function is
 # already defined when the calls below run.
+
+# An EXPORTED SET_PATH_SOURCED is always stale, so erase it before the guard. The
+# marker below is set -g and never -x, so a value that is EXPORTED here can only
+# have come from an OLDER version of this file that set it -gx. That exported value
+# is inherited by every child of the shell that ran it, a fresh login included, and
+# it makes this shell skip its own PATH build and the opam integration below, the
+# exact trap the -g choice warns about, and a new generation alone does not undo
+# it. Erasing it lets this shell rebuild. A legitimate same-shell marker is -g, not
+# exported, so `set -qx` leaves it untouched. This was a real bug: an inherited
+# exported marker skipped the block and opam never integrated in any shell.
+if set -qx SET_PATH_SOURCED
+    set -e SET_PATH_SOURCED
+end
+
 if not set -q SET_PATH_SOURCED
     # -g, NOT -x. The marker must not be exported. A child that inherits the
     # environment but resets PATH, which is exactly what `nix develop` and
@@ -94,13 +108,24 @@ if not set -q SET_PATH_SOURCED
     end
 
     # OCaml/opam. OCaml is NOT from Nix (see the tombstone in home/languages.nix),
-    # so opam owns the whole toolchain and this line is how it reaches PATH at all,
-    # not a shadow of anything. A tool from `opam install` lives in the active
-    # switch under ~/.opam/<switch>/bin, not a fixed dir, so add_to_path cannot find
-    # it. `opam env` emits the correct PATH and library variables for the current
-    # switch. Guarded, so a host without opam or before `opam init` neither errors
-    # nor prints.
+    # so opam owns the whole toolchain and this is how it reaches PATH at all, not a
+    # shadow of anything. A tool from `opam install` lives in the active switch
+    # under ~/.opam/<switch>/bin, not a fixed dir, so add_to_path cannot find it.
+    #
+    # `eval (opam env)`, NOT `opam env --shell=fish | source`, and NOT opam's
+    # init.fish. The pipe form works on its own but SILENTLY fails here, after this
+    # file has rebuilt PATH: opam env's output carries a `builtin -n | /bin/sh -c ...`
+    # MANPATH probe that fights `source` over stdin in that context, so nothing gets
+    # set. init.fish fails for a related reason, and with `opam init` answered "no
+    # hooks" its env_hook.fish is empty anyway. `eval` captures opam env's output as
+    # a string and runs it, so there is no pipe and no stdin to fight, and it applies
+    # in every shell. This was masked while ocaml came from Nix (its binaries sat on
+    # PATH directly) and surfaced the moment opam became the only source. Measured:
+    # the pipe form leaves OPAM_SWITCH_PREFIX unset in a full login shell and ocaml
+    # resolves to nothing, while eval sets it and ocaml resolves to
+    # ~/.opam/default/bin/ocaml. Guarded, so a host without opam or before `opam
+    # init` neither errors nor prints.
     if command -q opam; and test -d "$HOME/.opam"
-        opam env --shell=fish 2>/dev/null | source
+        eval (opam env --shell=fish 2>/dev/null)
     end
 end
