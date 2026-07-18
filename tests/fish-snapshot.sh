@@ -4,9 +4,10 @@
 #
 # It sources the fish tree in the SAME order home/fish.nix shellInit does, then
 # dumps the realized state: every function and alias name, every exported
-# variable, PATH in order, and the bodies of the hand-written functions. That is
-# the observable behavior of the shell. A behavior-preserving refactor leaves this
-# dump unchanged. A change that moves it changed behavior, full stop.
+# variable, PATH in order, and the bodies of the hand-written functions AND
+# aliases. That is the observable behavior of the shell. A behavior-preserving
+# refactor leaves this dump unchanged. A change that moves it changed behavior,
+# full stop.
 #
 #   ./fish-snapshot.sh capture   write the golden from the current fish tree
 #   ./fish-snapshot.sh check     re-derive and diff against the golden (default)
@@ -31,14 +32,18 @@ if [ -z "$FISH" ]; then
 fi
 
 snapshot() {
-  # The hand-written function bodies to dump are DERIVED from functions.fish, not
-  # hand-listed. The old fixed list captured nine of the eighteen functions and
-  # silently missed the ex-* exercism family, so their bodies could be rewritten
-  # and this gate stayed green. The `function NAME` definitions are the source of
-  # truth. Sorted, so the golden is stable regardless of definition order.
+  # The bodies to dump are DERIVED, not hand-listed: every `function NAME` in
+  # functions.fish AND every `alias NAME` in aliases.fish. A fish alias IS a
+  # function, so `functions NAME` dumps its wrapper body, which is where the alias's
+  # real behavior lives. The old list covered functions only, so a genuine change to
+  # an alias body, for instance wg from `wget -c` to `wget --no-check-certificate`
+  # which silently disables TLS, passed this gate green: the name was captured, the
+  # body was not. Both are derived now, and the ex-* family a hand-list once missed
+  # stays caught. Sorted, so the golden is stable regardless of definition order.
   local fns
-  fns="$(grep -oE '^function [A-Za-z0-9_-]+' "$FISHDIR/functions.fish" \
-         | awk '{print $2}' | sort -u | tr '\n' ' ')"
+  fns="$( { grep -oE '^function [A-Za-z0-9_-]+' "$FISHDIR/functions.fish"
+            grep -oE '^alias [A-Za-z0-9_.-]+'    "$FISHDIR/aliases.fish" ; } \
+          | awk '{print $2}' | sort -u | tr '\n' ' ')"
   env -i HOME="$HOME" USER="$USER" PATH="/usr/bin:/bin" "$FISH" --no-config -c '
     source '"$FISHDIR"'/env.fish
     source '"$FISHDIR"'/functions.fish

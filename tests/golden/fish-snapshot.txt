@@ -189,14 +189,42 @@ _ZO_FZF_OPTS '--no-sort --keep-right --height=50% --info=inline --layout=…
 /usr/bin
 /bin
 # ===== HAND-WRITTEN FUNCTION BODIES =====
+function .. --description 'alias .. cd ..'
+    cd .. $argv
+end
+
+function ... --wraps='cd ../..' --description 'alias ... cd ../..'
+    cd ../.. $argv
+end
+
+function .... --wraps='cd ../../..' --description 'alias .... cd ../../..'
+    cd ../../.. $argv
+end
+
+function ..... --wraps='cd ../../../..' --description 'alias ..... cd ../../../..'
+    cd ../../../.. $argv
+end
+
+function ...... --wraps='cd ../../../../..' --description 'alias ...... cd ../../../../..'
+    cd ../../../../.. $argv
+end
+
 function add_to_path
     if not contains $argv[1] $PATH
         set -x PATH $argv[1] $PATH
     end
 end
 
+function b --wraps='bat --style header --style snip --style changes --style header' --description 'alias b bat --style header --style snip --style changes --style header'
+    bat --style header --style snip --style changes --style header $argv
+end
+
 function backup --argument-names filename
     cp $filename $filename.bak
+end
+
+function c --wraps='$VEDITOR' --description 'alias c $VEDITOR'
+    $VEDITOR $argv
 end
 
 function cleanup --description 'Remove orphaned packages and clear the package cache'
@@ -232,6 +260,42 @@ function copy
     else
         command cp $argv
     end
+end
+
+function dr --wraps='dir --color=auto' --description 'alias dr dir --color=auto'
+    dir --color=auto $argv
+end
+
+function e --wraps='eza -F --color=auto --git --group-directories-first --sort=type --icons' --description 'alias e eza -F --color=auto --git --group-directories-first --sort=type --icons'
+    eza -F --color=auto --git --group-directories-first --sort=type --icons $argv
+end
+
+function ea --wraps='eza -a --color=auto --git --group-directories-first --sort=type --icons' --description 'alias ea eza -a --color=auto --git --group-directories-first --sort=type --icons'
+    eza -a --color=auto --git --group-directories-first --sort=type --icons $argv
+end
+
+function eam --wraps='eza -algF --color=auto --git --group-directories-first --sort=modified --icons --time-style=iso' --description 'alias eam eza -algF --color=auto --git --group-directories-first --sort=modified --icons --time-style=iso'
+    eza -algF --color=auto --git --group-directories-first --sort=modified --icons --time-style=iso $argv
+end
+
+function efm --wraps='eza -albgf --git --sort=modified' --description 'alias efm eza -albgf --git --sort=modified'
+    eza -albgf --git --sort=modified $argv
+end
+
+function el --wraps='eza -algF --color=auto --git --group-directories-first --sort=type --icons --time-style=iso' --description 'alias el eza -algF --color=auto --git --group-directories-first --sort=type --icons --time-style=iso'
+    eza -algF --color=auto --git --group-directories-first --sort=type --icons --time-style=iso $argv
+end
+
+function em --wraps='eza -lbg --git --sort=modified' --description 'alias em eza -lbg --git --sort=modified'
+    eza -lbg --git --sort=modified $argv
+end
+
+function es --wraps='eza --color=auto --git --group-directories-first --sort=type --icons' --description 'alias es eza --color=auto --git --group-directories-first --sort=type --icons'
+    eza --color=auto --git --group-directories-first --sort=type --icons $argv
+end
+
+function et --wraps='eza -aT --level=2' --description 'alias et eza -aT --level=2'
+    eza -aT --level=2 $argv
 end
 
 function ex-cd --description 'cd to an already-downloaded exercise: ex-cd rust clock'
@@ -273,6 +337,10 @@ function ex-get --description 'Download an exercism exercise and cd into it: ex-
     cd $dir
 end
 
+function exl --wraps='eza -lbhHigUmuSa@ --color=auto --git --group-directories-first --sort=type --icons --time-style=iso' --description 'alias exl eza -lbhHigUmuSa@ --color=auto --git --group-directories-first --sort=type --icons --time-style=iso'
+    eza -lbhHigUmuSa@ --color=auto --git --group-directories-first --sort=type --icons --time-style=iso $argv
+end
+
 function ex-submit --description 'Submit the current exercise'
     # Files are optional: the CLI works out what to send from the exercise dir.
     exercism submit $argv
@@ -306,6 +374,10 @@ function foundry --description 'Launch FoundryVTT in the background, detached'
     nohup $HOME/foundryvtt/foundryvtt >/dev/null 2>&1 &
 end
 
+function g --wraps=git --description 'alias g git'
+    git $argv
+end
+
 function gd --description 'Run Godot in the background, detached, forwarding args'
     nohup $GODOT $argv >/dev/null 2>&1 &
 end
@@ -333,6 +405,14 @@ function generatetoken --description 'Generates a secure 64-character hex key us
     echo $token
 end
 
+function gf --wraps='rg -F --color=auto' --description 'alias gf rg -F --color=auto'
+    rg -F --color=auto $argv
+end
+
+function gr --wraps='rg --color=auto' --description 'alias gr rg --color=auto'
+    rg --color=auto $argv
+end
+
 function grubup --description 'Regenerate the bootloader configuration'
     if command -q rpm-ostree
         echo "grubup: atomic host, ostree owns the bootloader, nothing to do" >&2
@@ -351,6 +431,22 @@ function history
     builtin history --show-time='%F %T '
 end
 
+function hw --wraps='hwinfo --short' --description 'alias hw hwinfo --short'
+    hwinfo --short $argv
+end
+
+function ipc --wraps='ip -color=auto' --description 'alias ipc ip -color=auto'
+    ip -color=auto $argv
+end
+
+function nugetclean --wraps='dotnet nuget locals --clear all' --description 'alias nugetclean dotnet nuget locals --clear all'
+    dotnet nuget locals --clear all $argv
+end
+
+function p3 --wraps=python3 --description 'alias p3 python3'
+    python3 $argv
+end
+
 function __pkg_manager
     if command -q rpm-ostree
         echo rpm-ostree
@@ -361,6 +457,18 @@ function __pkg_manager
     else if command -q zypper
         echo zypper
     end
+end
+
+function psmem --wraps='ps auxf | sort -nr -k 4' --description 'alias psmem ps auxf | sort -nr -k 4'
+    ps auxf | sort -nr -k 4 $argv
+end
+
+function psmem10 --wraps='ps auxf | sort -nr -k 4 | head -10' --description 'alias psmem10 ps auxf | sort -nr -k 4 | head -10'
+    ps auxf | sort -nr -k 4 | head -10 $argv
+end
+
+function quit --wraps=exit --description 'alias quit exit'
+    exit $argv
 end
 
 function rmpkg --description 'Remove one or more packages'
@@ -393,6 +501,14 @@ function servers --description 'Open the dev-servers zellij layout'
         return 1
     end
     zellij -n servers --layout servers
+end
+
+function tarnow --wraps='tar -acf ' --description 'alias tarnow tar -acf '
+    tar -acf  $argv
+end
+
+function untar --wraps='tar -zxvf ' --description 'alias untar tar -zxvf '
+    tar -zxvf  $argv
 end
 
 function upd --description 'Update and upgrade all system packages'
@@ -435,4 +551,16 @@ function update_ssh_auth_sock
     if not set -q SSH_AUTH_SOCK
         eval (ssh-agent -c)
     end
+end
+
+function v --wraps=nvim --description 'alias v nvim'
+    nvim $argv
+end
+
+function vd --wraps='vdir --color=auto' --description 'alias vd vdir --color=auto'
+    vdir --color=auto $argv
+end
+
+function wg --wraps='wget -c ' --description 'alias wg wget -c '
+    wget -c  $argv
 end
