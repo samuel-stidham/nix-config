@@ -27,7 +27,10 @@ mkdir -p "$(dirname "$out")"
 # The obvious fix, branching on $FAMILY, is the wrong one. Packaging does not
 # follow the distro. Someone runs the Flatpak on Ubuntu or the deb on Fedora.
 # So probe the filesystem for the roots that actually exist, and if none does,
-# abort loudly rather than overwrite a good file with nothing.
+# abort loudly rather than overwrite a good file with nothing. That directory probe
+# is necessary but not sufficient: a library can exist and still hold no real game.
+# The output is staged to a temp file below and only moved over $out when it is
+# non-empty, so an empty result never truncates the committed list either.
 #
 # The Flatpak data path is read off the Flatpak XDG convention, app id
 # com.valvesoftware.Steam. Unverified on Bazzite, no such machine available.
@@ -50,16 +53,24 @@ if [ "${#libs[@]}" -eq 0 ]; then
   exit 1
 fi
 
+# Stage to a temp file in the same dir as $out, NOT straight to $out. The library
+# guard above proves a steamapps tree EXISTS, not that it holds a real game. An
+# empty tree, or a library with only runtimes and Proton (all skipped below), emits
+# zero lines, and `> "$out"` would truncate the committed list to empty and print
+# "wrote 0" as success, the exact overwrite-with-nothing this script promises never
+# to do. Even a mid-pipeline death leaves the temp empty, not $out. Same dir keeps
+# the final mv atomic.
+tmp="$(mktemp "$(dirname "$out")/.appids.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+
 {
   for m in "${libs[@]}"; do
     for f in "$m"/appmanifest_*.acf; do
       [ -e "$f" ] || continue
-      # `|| true` then a presence check, because set -euo pipefail turns a
-      # no-match grep (exit 1) into a script death, and this runs inside the
-      # { ... } | sort > "$out" pipeline where $out is the already-truncated
-      # committed appids.txt. Steam leaves empty and half-written .acf files
-      # during interrupted downloads, and on one of those the old code killed the
-      # subshell and left the good committed file destroyed. Skip, do not die.
+      # `|| true` then a presence check, because set -euo pipefail turns a no-match
+      # grep (exit 1) into a subshell death. Steam leaves empty and half-written
+      # .acf files during interrupted downloads, so skip a manifest with no appid
+      # rather than die on it.
       id=$(grep -oP '"appid"\s*"\K[0-9]+' "$f" | head -1) || true
       [ -n "$id" ] || continue
       nm=$(grep -oP '"name"\s*"\K[^"]+' "$f" | head -1) || true
@@ -70,6 +81,14 @@ fi
       printf '%s\t%s\n' "$id" "$nm"
     done
   done
-} | sort -n -u > "$out"
+} | sort -n -u > "$tmp"
 
-echo "wrote $(wc -l < "$out") appids to $out"
+if [ ! -s "$tmp" ]; then
+  echo "Found a Steam library but no installed game (empty, or only runtimes and" >&2
+  echo "Proton). Refusing to overwrite $out with an empty list." >&2
+  exit 1
+fi
+
+count=$(wc -l < "$tmp")
+mv "$tmp" "$out"
+echo "wrote $count appids to $out"
