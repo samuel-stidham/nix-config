@@ -144,12 +144,16 @@ fi
 # directory, so the wildcard is installed under every name it serves. Copies
 # rather than symlinks: nginx is started from a process-compose stack that may
 # not follow links out of its runtime dir, and these are two small files.
-install -m 0644 "$LEGO_CRT" "${CERTDIR}/${DOMAIN}.crt"
-install -m 0600 "$LEGO_KEY" "${CERTDIR}/${DOMAIN}.key"
+# install, checked. This script drops set -e on purpose to handle its own
+# failures, and this block was the one place that ignored a failed install. A full
+# disk or bad perms would leave nginx serving the OLD cert while the run still
+# printed success below. Check each copy and abort loudly instead.
+install -m 0644 "$LEGO_CRT" "${CERTDIR}/${DOMAIN}.crt" || { echo "failed to install ${DOMAIN}.crt into ${CERTDIR}" >&2; exit 1; }
+install -m 0600 "$LEGO_KEY" "${CERTDIR}/${DOMAIN}.key" || { echo "failed to install ${DOMAIN}.key into ${CERTDIR}" >&2; exit 1; }
 
 for host in forgejo atlantis linux mac; do
-  install -m 0644 "$LEGO_CRT" "${CERTDIR}/${host}.${DOMAIN}.crt"
-  install -m 0600 "$LEGO_KEY" "${CERTDIR}/${host}.${DOMAIN}.key"
+  install -m 0644 "$LEGO_CRT" "${CERTDIR}/${host}.${DOMAIN}.crt" || { echo "failed to install ${host}.${DOMAIN}.crt" >&2; exit 1; }
+  install -m 0600 "$LEGO_KEY" "${CERTDIR}/${host}.${DOMAIN}.key" || { echo "failed to install ${host}.${DOMAIN}.key" >&2; exit 1; }
 done
 
 # nginx reads the cert once, at start, and holds it open. A renewed file on disk
@@ -171,11 +175,16 @@ fi
 
 echo "installed into ${CERTDIR}:"
 printf '  %s\n' "${DOMAIN}.crt" "${DOMAIN}.key"
+# Report from the INSTALLED copy, not $LEGO_CRT. Reading the source would print the
+# freshly-issued cert's expiry even where an install had left an older cert in
+# place, the exact false-success this function must never print. The installs above
+# are now checked, so reaching here means this file is the one nginx serves.
+installed="${CERTDIR}/${DOMAIN}.crt"
 if command -v openssl >/dev/null 2>&1; then
   echo "cert covers:"
-  openssl x509 -in "$LEGO_CRT" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | sed 's/^ */  /'
+  openssl x509 -in "$installed" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | sed 's/^ */  /'
   echo "expires:"
-  openssl x509 -in "$LEGO_CRT" -noout -enddate 2>/dev/null | sed 's/notAfter=/  /'
+  openssl x509 -in "$installed" -noout -enddate 2>/dev/null | sed 's/notAfter=/  /'
   echo "issued by:"
-  openssl x509 -in "$LEGO_CRT" -noout -issuer 2>/dev/null | sed 's/issuer=/  /'
+  openssl x509 -in "$installed" -noout -issuer 2>/dev/null | sed 's/issuer=/  /'
 fi

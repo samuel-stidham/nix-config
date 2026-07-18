@@ -6,7 +6,23 @@ function history
 end
 
 # Function: add_to_path
-# Adds the given directory to PATH if it isn’t already present.
+# Adds the given directory to the front of PATH if it is not already there.
+#
+# DELIBERATELY NO `test -d` GUARD, and this is a conscious design choice, not an
+# oversight. It adds language-manager bin dirs that may not exist yet: ~/.bun/bin,
+# ~/.deno/bin, ~/.cargo/bin, ~/sdk, the composer vendor dir. Keeping a not-yet
+# existent dir on PATH is the POINT. `bun add -g foo` then makes foo runnable in
+# the shell you are already in, because the PATH slot is already waiting and fish
+# rehashes on the first miss. A `-d` guard would skip the dir until it existed, so
+# the first-ever global install into a fresh manager dir would not appear until a
+# new shell. On a dev machine built around first-class language managers, that
+# immediacy beats a tidy PATH, and the phantom entries resolve nothing and cost
+# nothing.
+#
+# REVIEWERS: do not "fix" this with a `test -d`. It was flagged once (round 2, L10)
+# and reverted on purpose. The one case that DOES want a -d is a wrong-arch dir
+# that will never be populated, e.g. texlive's arch path, and that is handled at
+# the call site with a glob in configure_path.fish, not here.
 function add_to_path
     if not contains $argv[1] $PATH
         set -x PATH $argv[1] $PATH
@@ -28,8 +44,147 @@ function copy
     end
 end
 
-function cleanup
-    sudo apt autoremove -y && sudo apt autoclean
+# __pkg_manager names the system package manager for the running distro. It is
+# the fish-side answer to what bootstrap.sh's detect_os computes as PKG, and it
+# exists because that value never reaches an interactive shell: detect_os sets a
+# shell script local, and fish never runs the bootstrap. `command -q` answers the
+# only question these aliases need, which tool installs a package, on the machine
+# you are standing on, with no os-release table to keep in sync.
+#
+# ORDER is deliberate. rpm-ostree is probed first, because an atomic base
+# (Bazzite, Silverblue) can also carry a layered dnf, and on such a host the
+# system verb is rpm-ostree, never dnf. On plain Fedora rpm-ostree is absent, so
+# dnf wins next. Prints the manager on stdout, or nothing when none matches, and
+# every caller gates on that empty case and refuses loudly.
+#
+# This lives here in functions.fish because it is a helper function and this is
+# where functions belong. grubup, rmpkg, upd, and cleanup below all call it. A
+# fish function body is not resolved until the function is called, so definition
+# order within the file does not matter. Unverified on fedora, suse, and atomic,
+# no such machine available.
+function __pkg_manager
+    if command -q rpm-ostree
+        echo rpm-ostree
+    else if command -q apt
+        echo apt
+    else if command -q dnf
+        echo dnf
+    else if command -q zypper
+        echo zypper
+    end
+end
+
+# cleanup was `sudo apt autoremove -y && sudo apt autoclean`, both Debian-only
+# verbs. On Fedora and openSUSE it was command-not-found and no cache was ever
+# cleared. dnf carries the same two verbs. The atomic and suse arms are partial
+# by necessity, explained inline. Verbs read off dnf5 and openSUSE docs, not run:
+# no fedora, suse, or atomic machine available.
+function cleanup --description 'Remove orphaned packages and clear the package cache'
+    switch (__pkg_manager)
+        case apt
+            sudo apt autoremove -y && sudo apt autoclean
+        case dnf
+            sudo dnf autoremove -y && sudo dnf clean all
+        case rpm-ostree
+            # No orphan concept on an atomic base: layered packages are explicit
+            # and nothing is auto-pulled, so there is nothing to autoremove.
+            # `cleanup -m` drops cached rpm-md metadata, the only cache this verb
+            # owns here.
+            rpm-ostree cleanup -m
+        case zypper
+            # zypper has no autoremove verb, so the orphan half of cleanup has no
+            # equivalent. `zypper clean --all` clears the package cache, the
+            # autoclean half. Orphans on suse need `zypper packages --unneeded`
+            # reviewed by hand, never an unattended rm.
+            sudo zypper clean --all
+        case '*'
+            echo "cleanup: no supported package manager found" >&2
+            return 1
+    end
+end
+
+# grubup regenerates the bootloader config. It used to be the alias
+# `sudo update-grub`, a Debian-only wrapper that hardcodes /boot/grub/grub.cfg.
+# On Fedora and openSUSE that command does not exist, so the alias died with
+# command-not-found and the config was never rebuilt. Both ship grub2-mkconfig
+# and write /boot/grub2/grub.cfg, a path Fedora unified across BIOS and UEFI in
+# F34 (Changes/UnifyGrubConfig). An atomic base owns its own boot through ostree,
+# so a manual grub regen is wrong there and this refuses rather than run the
+# wrong tool. Probe the tool, not $FAMILY. Verified paths against Fedora and
+# openSUSE docs, not run: no fedora, suse, or atomic machine available.
+function grubup --description 'Regenerate the bootloader configuration'
+    if command -q rpm-ostree
+        echo "grubup: atomic host, ostree owns the bootloader, nothing to do" >&2
+        return 1
+    else if command -q update-grub
+        sudo update-grub
+    else if command -q grub2-mkconfig
+        sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+    else
+        echo "grubup: no grub config generator found" >&2
+        return 1
+    end
+end
+
+# rmpkg and upd were the aliases `sudo apt remove` and `sudo apt update &&
+# upgrade`. apt is Debian-only, so on Fedora and openSUSE they were
+# command-not-found and the machine never had a package removed or an update
+# applied. __pkg_manager above probes the system package manager once, and each
+# verb dispatches on it. The verbs were read off dnf5, openSUSE, and rpm-ostree
+# docs, not run: no fedora, suse, or atomic machine available.
+function rmpkg --description 'Remove one or more packages'
+    switch (__pkg_manager)
+        case apt
+            sudo apt remove $argv
+        case dnf
+            sudo dnf remove $argv
+        case rpm-ostree
+            # uninstall drops a layered package. A base package needs
+            # `rpm-ostree override remove`, deliberately not wired here because
+            # removing a base package is not the everyday case this serves.
+            rpm-ostree uninstall $argv
+        case zypper
+            sudo zypper remove $argv
+        case '*'
+            echo "rmpkg: no supported package manager found" >&2
+            return 1
+    end
+end
+
+function upd --description 'Update and upgrade all system packages'
+    switch (__pkg_manager)
+        case apt
+            sudo apt update && sudo apt upgrade -y
+        case dnf
+            sudo dnf upgrade -y
+        case rpm-ostree
+            # Atomic base: rpm-ostree stages a new deployment, no sudo, polkit
+            # authenticates. The change lands on the next boot by design.
+            rpm-ostree upgrade
+        case zypper
+            # Tumbleweed is rolling and has no update/upgrade split. `zypper dup`
+            # is the one correct verb there, and `zypper up` is explicitly wrong
+            # per openSUSE docs. Leap does split them and wants `zypper up`. The
+            # os-release ID is the only local signal that separates the two.
+            sudo zypper ref
+            # string match, a fish builtin, not grep: it reads os-release straight
+            # off stdin with no subprocess and no dependency on which grep is on
+            # PATH. grep is no longer aliased, but this is still the cleaner idiom.
+            # The `"?` is load bearing: real Tumbleweed ships ID="opensuse-tumbleweed"
+            # WITH quotes, so an unquoted `^ID=opensuse-tumbleweed` never matched and
+            # upd silently ran `zypper up`, the verb the comment above calls wrong for
+            # a rolling release. bootstrap sources os-release so its quotes are gone,
+            # which is why the two differ. The optional quote matches both forms and
+            # still rejects opensuse-leap.
+            if string match -qr '^ID="?opensuse-tumbleweed' </etc/os-release
+                sudo zypper dup
+            else
+                sudo zypper up
+            end
+        case '*'
+            echo "upd: no supported package manager found" >&2
+            return 1
+    end
 end
 
 function generatetoken --description "Generates a secure 64-character hex key using the first available method."
@@ -55,8 +210,20 @@ function generatetoken --description "Generates a secure 64-character hex key us
     echo $token
 end
 
-function godot --description 'Run Godot with nohup, redirecting output to /dev/null'
-    nohup $GODOT >/dev/null 2>&1 &
+# gd, not godot: a function named `godot` would shadow the real godot binary, and
+# worse, the old body dropped every argument passed to it. The launcher keeps its
+# own short name and forwards $argv, and `godot` stays the real command per the
+# no-shadow rule.
+function gd --description 'Run Godot in the background, detached, forwarding args'
+    nohup $GODOT $argv >/dev/null 2>&1 &
+end
+
+# foundry is a function, not an alias, for the same reason gd is. A trailing-`&`
+# alias breaks in fish: `alias foundry '... &'` expands to `... & $argv`, and the
+# empty $argv makes fish error on an empty command every call. The function
+# backgrounds cleanly with nothing trailing.
+function foundry --description 'Launch FoundryVTT in the background, detached'
+    nohup $HOME/foundryvtt/foundryvtt >/dev/null 2>&1 &
 end
 
 function update_ssh_auth_sock

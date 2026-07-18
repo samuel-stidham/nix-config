@@ -23,55 +23,138 @@
 # once would contend for the same I/O budget for hours. Staggering costs nothing
 # and keeps the machine usable.
 #
-# Requires a passwordless sudo rule for the scrub, see bootstrap.sh:
-#   samuelstidham ALL=(root) NOPASSWD: /usr/bin/btrfs scrub *
+# Requires a passwordless sudo rule for the scrub. bootstrap.sh writes it in
+# btrfs_scrub_sudo, which probes sudo's own secure_path for the btrfs binary
+# rather than hardcoding a path. The rule it writes names $USER and the probed
+# binary:
+#   $USER ALL=(root) NOPASSWD: $btrfs_bin scrub *
+# That binary is /usr/sbin/btrfs on openSUSE and Fedora, and /usr/bin/btrfs on
+# Ubuntu. The old comment here named a literal /usr/bin/btrfs rule for the
+# literal samuelstidham. It was wrong on both the path and the user. A Fedora
+# reader would hunt a rule that was never written there.
 set -uo pipefail
 
 MAILTO="${SCRUB_MAILTO:-dqfan2012@gmail.com}"
 DRY=0
 TARGET=""
 
+# A target is a bare LABEL, which the timer passes, or an absolute path, which
+# the documented hand-run passes. The old case accepted only /absolute and sent
+# a bare word to exit 2. home/btrfs-scrub.nix freezes its mount into the unit at
+# Nix eval time and Nix cannot probe a mount table, so the unit must pass a
+# LABEL and let this script resolve it at runtime. Under the old case that label
+# hit the reject arm and the timer died with exit 2 every month. Still fail
+# closed on an unknown OPTION, so a typo'd flag does not become a phantom label.
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY=1 ;;
-    /*)        TARGET="$arg" ;;
-    *)         echo "unknown argument: $arg" >&2; exit 2 ;;
+    -*)        echo "unknown option: $arg" >&2; exit 2 ;;
+    *)         TARGET="$arg" ;;
   esac
 done
 
-# One mount if asked for it, otherwise every btrfs mount worth checking. A mount
-# that is absent or not btrfs is skipped rather than failing, so this stays
-# correct if a drive is unplugged or not yet converted.
+# WHERE THE RESOLVER COMES FROM, AND WHY THE GUARD
+#
+# The candidates below are filesystem LABELS, not paths, because the mountpoint
+# differs per family. udisks mounts at /media/$USER on Ubuntu, /run/media/$USER
+# on Fedora and openSUSE, and /var/mnt on Bazzite's ostree root. resolve() maps
+# a label to wherever the kernel has it mounted right now, so no path is baked
+# in. See scripts/drive-mount.sh for the whole argument.
+#
+# Two delivery paths, because this script runs two ways. From a checkout it is
+# run by hand and drive-mount.sh sits beside it, so source it and call the
+# function. In the store the systemd unit is one file pasted by
+# writeShellApplication with no siblings, so call the drive-mount command that
+# home/btrfs-scrub.nix lists in runtimeInputs. If neither is reachable, fail
+# loud with rc=2. A missing resolver must never read as a drive that is clean.
+_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$_dir/drive-mount.sh" ]; then
+  # shellcheck source=scripts/drive-mount.sh disable=SC1091
+  # source= lets `shellcheck -x` follow the sibling from a checkout. disable is
+  # for the store build: writeShellApplication runs plain shellcheck with no
+  # sibling present, and SC1091 "not following" would fail the build otherwise.
+  . "$_dir/drive-mount.sh"
+  resolve() { drive_mount "$1"; }
+elif command -v drive-mount >/dev/null 2>&1; then
+  resolve() { drive-mount "$1"; }
+else
+  echo "drive-mount resolver not found, cannot map a label to a mountpoint" >&2
+  exit 2
+fi
+
+# One drive if asked for it, otherwise both drives this machine defends with a
+# scrub. Defaults are LABELS, resolved at runtime to the current mountpoint.
 if [ -n "$TARGET" ]; then
   CANDIDATES=("$TARGET")
 else
-  CANDIDATES=(
-    /media/samuelstidham/StoragePrime
-    /media/samuelstidham/WorkDrive
-  )
+  CANDIDATES=(StoragePrime WorkDrive)
 fi
 
+# A drive that should be here but is not mounted is a FAILURE to report, never a
+# silent skip. The old code hardcoded the Ubuntu /media path, matched nothing on
+# Fedora, openSUSE and Bazzite, printed "no btrfs mounts to scrub" and exited 0.
+# The monthly bit-rot sweep then reported success having read zero blocks, on
+# drives that scripts/backup.sh deliberately excludes from restic. That silence
+# is the exact bug this change exists to kill. So a failed resolve now feeds the
+# report and mails, and the run exits nonzero like a scrub error does.
+report=""
+bad=0
 mounts=()
-for m in "${CANDIDATES[@]}"; do
+for c in "${CANDIDATES[@]}"; do
+  case "$c" in
+    /*)
+      # An absolute path, used as given. The documented hand-run form. The
+      # findmnt check below still confirms it is a mounted btrfs.
+      m="$c"
+      ;;
+    *)
+      # A LABEL. Resolve it to where the drive is mounted right now. Capture the
+      # status: rc=0 mounted, rc=1 not mounted, rc=2 findmnt gone. No `local`
+      # here, this is top level, so nothing masks the status.
+      m="$(resolve "$c")" ; rc=$?
+      if [ "$rc" -eq 2 ]; then
+        # findmnt is gone, so util-linux is missing and the machine is broken.
+        # Never skip quietly on a 2. Abort loud rather than mail from a box that
+        # cannot even read its own mount table.
+        echo "cannot resolve label $c: findmnt missing, util-linux gone" >&2
+        exit 2
+      fi
+      if [ "$rc" -ne 0 ] || [ -z "$m" ]; then
+        # rc=1, the drive is not mounted. Report it, do not skip it.
+        echo "FAIL: labelled drive $c is not mounted, cannot scrub it" >&2
+        bad=1
+        report+="=== ${c} ===
+label ${c} is not mounted, so it was not scrubbed
+
+"
+        continue
+      fi
+      ;;
+  esac
+
   if [ "$(findmnt -no FSTYPE "$m" 2>/dev/null)" = "btrfs" ]; then
     mounts+=("$m")
   else
-    echo "skip: $m is not a mounted btrfs"
+    echo "FAIL: $m is not a mounted btrfs, cannot scrub it" >&2
+    bad=1
+    report+="=== ${m} ===
+${m} is not a mounted btrfs filesystem, so it was not scrubbed
+
+"
   fi
 done
 
-if [ ${#mounts[@]} -eq 0 ]; then
-  echo "no btrfs mounts to scrub"
-  exit 0
-fi
-
 if [ "$DRY" = 1 ]; then
-  printf 'would scrub: %s\n' "${mounts[@]}"
+  if [ ${#mounts[@]} -gt 0 ]; then
+    printf 'would scrub: %s\n' "${mounts[@]}"
+  fi
+  if [ "$bad" -ne 0 ]; then
+    echo "would FAIL, these did not resolve to a mounted btrfs:" >&2
+    printf '%s' "$report" >&2
+    exit 1
+  fi
   exit 0
 fi
-
-report=""
-bad=0
 
 for m in "${mounts[@]}"; do
   echo "scrubbing $m ..."
@@ -117,10 +200,13 @@ fi
 {
   printf 'To: %s\n' "$MAILTO"
   printf 'From: %s\n' "$MAILTO"
-  printf 'Subject: [btrfs] scrub found errors on %s\n' "$(hostname)"
+  # uname -n, not hostname. hostname is not in coreutils and is absent on a
+  # minimal Fedora, which would leave the subject and body blank. uname -n prints
+  # the nodename, ships in coreutils, and is already on the unit PATH.
+  printf 'Subject: [btrfs] scrub found errors on %s\n' "$(uname -n)"
   printf 'Content-Type: text/plain; charset=utf-8\n'
   printf '\n'
-  printf 'btrfs scrub reported problems on %s at %s.\n\n' "$(hostname)" "$(date -Is)"
+  printf 'btrfs scrub reported problems on %s at %s.\n\n' "$(uname -n)" "$(date -Is)"
   printf 'A scrub error means a block no longer matches its checksum. These\n'
   printf 'drives are single disk, so btrfs can detect the damage but cannot\n'
   printf 'repair it. The file named below has rotted and needs to be replaced\n'

@@ -132,10 +132,11 @@ and not today" — the stack simply is not up.
 
 ## Paths that are pinned
 
-`flake.nix` hardcodes two absolute paths:
+`flake.nix` builds the dev-services state directory from a single `homeDir`
+binding:
 
-- `siteRoot = /home/samuelstidham/sites`
-- `runDir = /home/samuelstidham/.local/share/dev-services`
+- `runDir = ${homeDir}/.local/share/dev-services`
 
-Moving `~/sites` means editing the flake. That is why the file structure plan
-leaves it where it is.
+The old `siteRoot` binding was deleted as dead. The sites root, `~/sites`, is
+defined in `home/web.nix` now with `${config.home.homeDirectory}`. Moving
+`~/sites` means editing that module.

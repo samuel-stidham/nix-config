@@ -8,7 +8,9 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # nixGL wraps Nix GL and Vulkan apps so they find the Ubuntu NVIDIA driver.
+    # nixGL wraps Nix GL and Vulkan apps so they find the host NVIDIA driver.
+    # Said "Ubuntu" until 2026-07. nixGL probes whatever driver the host has, so
+    # naming one distro invited a per-distro branch that must not exist here.
     # Exposed as a runnable output, run with --impure.
     nixgl.url = "github:nix-community/nixGL";
     # Catppuccin theming, Frappe flavor.
@@ -48,8 +50,52 @@
 
       perSystem = { pkgs, system, lib, ... }:
         let
-          siteRoot = "/home/samuelstidham/sites";
-          runDir = "/home/samuelstidham/.local/share/dev-services";
+          # HOME ROOT. The single hardcoded home path in this repo, and the
+          # hardcode is structural rather than lazy.
+          #
+          # The repo rule is `${config.home.homeDirectory}` and never a literal.
+          # `perSystem` cannot obey it. This is a flake-parts module, so there is
+          # no `config.home` in scope to read.
+          #
+          # The obvious fix is `builtins.getEnv "HOME"`, and it is worth writing
+          # down exactly how it fails. Pure evaluation does not reject it. It
+          # returns the empty string and exits 0:
+          #
+          #   $ nix eval --expr 'builtins.getEnv "HOME"' --raw   ->  (empty), exit 0
+          #   $ nix eval --impure --expr 'builtins.getEnv "HOME"' --raw
+          #                                                      ->  /home/samuelstidham
+          #
+          # So getEnv does not fail loudly here. It silently yields runDir as
+          # "/.local/share/dev-services", an unwritable path at the filesystem
+          # root, and the flake still evaluates. Forcing `--impure` on every
+          # consumer to dodge that is a worse trade than one honest literal.
+          #
+          # Branching on `pkgs.stdenv.isDarwin` beats hardcoding the linux path,
+          # because `systems` above declares aarch64-darwin and macOS homes live
+          # under /Users. This is asking the platform instead of maintaining a
+          # list. The same expression already lives at home/home.nix:29.
+          #
+          # It hardcodes ONCE. Six dataDirs below used to re-spell this prefix by
+          # hand while runDir sat here unused. That drifts silently: change this
+          # line and the php-fpm socket moves while the databases stay behind.
+          homeDir =
+            if pkgs.stdenv.isDarwin then "/Users/samuelstidham" else "/home/samuelstidham";
+          # KEEP IN SYNC with home/web.nix's runDir. These are two independent
+          # bindings for one path, in different eval contexts (perSystem here, a
+          # home module there) that cannot share a `let`. php-fpm's listen socket
+          # here and nginx's fastcgi_pass there both derive from it, so a change
+          # here not mirrored there silently breaks the php-fpm connection.
+          runDir = "${homeDir}/.local/share/dev-services";
+
+          # siteRoot lived here and is deliberately gone. It was nginx's document
+          # root. When nginx moved to home/web.nix (see the comment below), the
+          # consumer went with it and the binding stayed, referenced by nothing.
+          # Nix does not warn on an unused `let` binding, so it read as live
+          # config for as long as it survived. The live definition is
+          # home/web.nix:42, and it already uses ${config.home.homeDirectory}.
+          # Do not reintroduce it here. A second copy would look authoritative
+          # and serve nothing.
+
           phpPkg = import ./parts/php.nix pkgs;
 
           # nginx's config moved to home/web.nix, where nginx now runs as a
@@ -82,13 +128,22 @@
           };
         };
 
-        # nixGL runnable outputs. Run with:
-        #   nix run --impure ~/nix-config#nixGL -- <app>
-        packages.nixGL = nixgl.packages.${system}.nixGLDefault;
-        packages.nixGLNvidia = nixgl.packages.${system}.nixGLNvidia;
+        # nixGL runnable outputs. In legacyPackages, NOT packages, on purpose.
+        # nixGL's derivations use the impure builtins.currentTime, so exposing them
+        # under `packages` made `nix flake check` fail with "attribute 'currentTime'
+        # missing" unless run with --impure, which took the one cheap gate that
+        # catches eval errors, including darwin ones, off the table. `nix flake
+        # check` deliberately skips legacyPackages, the same escape hatch nixpkgs
+        # itself uses for impure or huge package sets, so this keeps the check clean.
+        # You still need --impure to RUN nixGL, because it probes the host driver,
+        # which is impure by nature. The attribute path is longer as a result:
+        #   nix run --impure .#legacyPackages.x86_64-linux.nixGL -- <app>
+        legacyPackages.nixGL = nixgl.packages.${system}.nixGLDefault;
+        legacyPackages.nixGLNvidia = nixgl.packages.${system}.nixGLNvidia;
 
         # Web layer for ~/sites/<name>. php-fpm and the .test resolver. Run with
-        # `nix run .#sites`. See MIGRATION notes for the one-time system config.
+        # `nix run .#sites`. The one-time system config is in SITES.md under
+        # "One-time system setup". There is no MIGRATION.md.
         #
         # nginx is NOT here any more. It moved to a systemd user service in
         # home/web.nix, because it now fronts Forgejo as well as the dev sites,
@@ -123,31 +178,31 @@
           services.mysql."mariadb" = {
             enable = true;
             package = pkgs.mariadb;
-            dataDir = "/home/samuelstidham/.local/share/dev-services/mariadb";
+            dataDir = "${runDir}/mariadb";
           };
           services.postgres."postgres" = {
             enable = true;
             package = pkgs.postgresql_18;
-            dataDir = "/home/samuelstidham/.local/share/dev-services/postgres";
+            dataDir = "${runDir}/postgres";
           };
           services.redis."redis" = {
             enable = true;
-            dataDir = "/home/samuelstidham/.local/share/dev-services/redis";
+            dataDir = "${runDir}/redis";
           };
           services.mongodb."mongodb" = {
             enable = true;
-            dataDir = "/home/samuelstidham/.local/share/dev-services/mongodb";
+            dataDir = "${runDir}/mongodb";
           };
           services.minio."minio" = {
             enable = true;
-            dataDir = "/home/samuelstidham/.local/share/dev-services/minio";
+            dataDir = "${runDir}/minio";
           };
 
           # meilisearch is not a services-flake service, so run it as a plain
           # process-compose process with its data under ~/.local/share.
           settings.processes.meilisearch.command = ''
             ${pkgs.meilisearch}/bin/meilisearch \
-              --db-path /home/samuelstidham/.local/share/dev-services/meilisearch \
+              --db-path ${runDir}/meilisearch \
               --http-addr 127.0.0.1:7700
           '';
         };

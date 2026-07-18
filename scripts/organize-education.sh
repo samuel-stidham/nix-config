@@ -22,8 +22,32 @@
 # deliberately, after checking the result.
 set -uo pipefail
 
+# StoragePrime has no fixed path across families. Ubuntu's udisks mounts a
+# labelled drive at /media/$USER/LABEL, which is a Debian patch. Upstream udisks
+# and Fedora, openSUSE and Bazzite use /run/media/$USER/LABEL, and a fresh machine
+# of any family pins it in fstab at /mnt/StoragePrime. The old literal
+# /media/samuelstidham/StoragePrime named a directory that exists on this one
+# Ubuntu box and nowhere else, and it hardcoded a username that CLAUDE.md bans.
+#
+# The obvious fix, a $FAMILY branch picking /media or /run/media or /mnt, is a
+# list to maintain that gets Bazzite wrong anyway, because ostree resolves /mnt to
+# /var/mnt, a path no branch would build. So probe instead. drive_mount asks the
+# kernel where the drive IS right now, correct on every family with no branch. The
+# whole argument lives in scripts/drive-mount.sh.
+#
+# WHY THIS SCRIPT WAS THE SILENT ONE. education-redundant.sh and
+# retag-education-import.sh guard on metadata.db and exit 1 loudly when LIB is
+# wrong. This script had no such guard, and calibredb add --with-library against a
+# missing directory CREATES a fresh empty library there. On Fedora it would import
+# every book into an empty library, defeat its own title-and-author dedup, and
+# report success. The guard added below refuses instead. The ${SP:+...} form
+# leaves LIB empty when the drive is absent so the guard fires, rather than
+# building the nonsense path /Books/Calibre Library.
+. "$(dirname "${BASH_SOURCE[0]}")/drive-mount.sh"
+SP="$(drive_mount StoragePrime)" || SP=""
+
 E="$HOME/Documents/Education"
-LIB="${CALIBRE_LIBRARY:-/media/samuelstidham/StoragePrime/Books/Calibre Library}"
+LIB="${CALIBRE_LIBRARY:-${SP:+$SP/Books/Calibre Library}}"
 VITAL="$HOME/Documents/Vital"
 
 APPLY=0
@@ -43,6 +67,21 @@ run()   { if [ "$APPLY" = 1 ]; then "$@"; else say "  DRY: $*"; fi; }
 head_ "mode"
 [ "$APPLY" = 1 ] && say "  APPLY: changes are real" || say "  DRY RUN. re-run with --apply"
 say "  library: $LIB"
+
+# Fail closed and loud when the library cannot be located. The other two scripts
+# already do this by guarding on metadata.db. This one imports rather than reads,
+# so it cannot require an existing library, a first import on a fresh but mounted
+# drive is legitimate. It CAN require a resolved path. An empty LIB means
+# StoragePrime is not mounted and CALIBRE_LIBRARY is unset, and running on would
+# let calibredb create an empty library in the wrong place and silently defeat the
+# dedup. Refuse instead, matching the loud refusal of the sibling scripts.
+if [ -z "$LIB" ]; then
+  say "  REFUSING to run. StoragePrime is not mounted and CALIBRE_LIBRARY is unset."
+  say "  Otherwise calibredb would create a fresh empty library in the wrong place,"
+  say "  import every book into it, and report success while the dedup matched"
+  say "  nothing. Mount the drive, or set CALIBRE_LIBRARY, then re-run."
+  exit 1
+fi
 
 # --------------------------------------------------------------------------
 # A secret was found sitting in a pile of textbooks. It is not a book, it must
@@ -224,8 +263,21 @@ import_dir() {
 #
 # Exactly one book there is NOT in the library, and it is the interesting case.
 import_second_edition() {
+  # The pattern was -iname 'Godot 4Game*', which matches nothing. A prior audit
+  # read that as a missing space and suggested 'Godot 4 Game*', which also matches
+  # nothing. The real filename has no spaces at all. calibre derived the stored
+  # title 'godot4gamedevelopmentprojects-secondedition' from the filename, so the
+  # source was godot4gamedevelopmentprojects-secondedition.azw. A leading 'Godot '
+  # with a space cannot match it. This failed silently, find returned nothing, the
+  # guard below skipped, and the ONLY path that imports the second edition never
+  # ran. The prune guard then refuses forever, so --prune-amazon can never succeed.
+  # Match the squished lowercase stem instead, case-insensitively.
+  #
+  # Unverified against the source file. The Purchased Amazon Books folder is gone
+  # from this machine, so the name rests on the calibre metadata for the two
+  # imported copies, ids 1117 and 1267, not on a read of the original file.
   local f
-  f="$(find "$E/Books/Purchased Amazon Books" -iname 'Godot 4Game*' -iname '*.azw' 2>/dev/null | head -1)"
+  f="$(find "$E/Books/Purchased Amazon Books" -iname '*godot*4*game*' -iname '*.azw' 2>/dev/null | head -1)"
   [ -n "$f" ] || { say "  2nd edition not found, skipping"; return 0; }
   say "  Godot 4 Game Development Projects, SECOND EDITION"
   say "    the library holds the FIRST edition. Same title, same author, so"
@@ -285,9 +337,20 @@ prune_amazon() {
   [ -d "$P" ] || { say "  already gone"; return 0; }
   local size; size="$(du -sh --apparent-size "$P" 2>/dev/null | cut -f1)"
 
-  # The guard: is the second edition in the library yet?
+  # The guard: are both editions in the library yet? This deletes 15G, so the
+  # count must be a row count and nothing else.
+  #
+  # The old form listed --fields title, dropped the header with tail -n +2, and ran
+  # wc -l. calibredb wraps a long title onto a second line even when piped, so wc
+  # counted continuation lines as books. Measured here, three books came out as
+  # five lines. That inflates the count, and inflation is the dangerous direction
+  # for a delete guard. One edition whose title wraps reads as two, the guard
+  # passes, and the folder is deleted while the second edition is still absent,
+  # which is the one thing this guard exists to prevent. Count ids instead. An id
+  # is a short integer that never wraps, and a leading-digit grep both counts the
+  # rows and drops the 'id' header in one step.
   local second
-  second="$(calibredb list --with-library "$LIB" --search 'title:"Godot 4 Game Development Projects"' --fields title 2>/dev/null | tail -n +2 | wc -l)"
+  second="$(calibredb list --with-library "$LIB" --search 'title:"Godot 4 Game Development Projects"' --fields id 2>/dev/null | grep -c '^[0-9]')"
   if [ "${second:-0}" -lt 2 ]; then
     say "  REFUSING to delete $size."
     say "  The library shows ${second:-0} edition(s) of 'Godot 4 Game Development"

@@ -43,13 +43,26 @@
 #   ./retag-education-import.sh --apply
 set -uo pipefail
 
-LIB="${CALIBRE_LIBRARY:-/media/samuelstidham/StoragePrime/Books/Calibre Library}"
+# StoragePrime has no fixed path across families. See scripts/drive-mount.sh. The
+# old literal /media/samuelstidham/StoragePrime is Ubuntu's udisks path and it
+# hardcodes a username. Upstream udisks and the other families use
+# /run/media/$USER/LABEL, and a fresh machine pins it in fstab at
+# /mnt/StoragePrime. Probe for where the drive IS instead of branching on family.
+# ${SP:+...} leaves LIB empty when the drive is absent so the guard below reports
+# it clearly rather than testing /metadata.db.
+. "$(dirname "${BASH_SOURCE[0]}")/drive-mount.sh"
+SP="$(drive_mount StoragePrime)" || SP=""
+
+LIB="${CALIBRE_LIBRARY:-${SP:+$SP/Books/Calibre Library}}"
 DB="$LIB/metadata.db"
 APPLY=0
 [ "${1:-}" = "--apply" ] && APPLY=1
 
 if ! command -v calibredb >/dev/null 2>&1; then
   echo "calibredb not on PATH" >&2; exit 1
+fi
+if [ -z "$LIB" ]; then
+  echo "StoragePrime not mounted and CALIBRE_LIBRARY unset" >&2; exit 1
 fi
 if [ ! -f "$DB" ]; then
   echo "no library at $LIB" >&2; exit 1

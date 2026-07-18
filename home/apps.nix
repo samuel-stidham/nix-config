@@ -1,13 +1,26 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
-# Desktop and dev applications that Nix owns. These are deliberate exceptions or
-# additions to the Flatpak-first rule in .agents/install-policy.md, chosen
+# Desktop and dev applications that Nix owns. The house rule is Flatpak-first for
+# desktop apps, and these are deliberate exceptions or additions to it, chosen
 # because Nix has them, no good Flatpak exists, or the native build integrates
 # better. Pure desktop apps like calibre, gimp, hexchat, and pidgin still go
-# through Flatpak. See .agents/install-policy.md for the full mapping.
+# through Flatpak.
+#
+# The full mapping is not a separate doc. It is this list plus the _vendor_*
+# functions in bootstrap.sh. Earlier text cited .agents/install-policy.md, which
+# was never written, so the rule is stated inline here instead of pointed at.
 
 {
-  home.packages = with pkgs; [
+  # Guarded to Linux. The flake applies this home.nix to aarch64-darwin too, and
+  # this list holds packages with no darwin build. wineWow64Packages.stable is a
+  # Linux-only WoW64 split by construction, and eclipses.eclipse-java carries
+  # Linux-only meta.platforms. Either one throws "not available on the requested
+  # hostPlatform" and aborts darwin eval the moment the list is forced. The rest
+  # are Linux desktop and dev apps, and the machine this repo reproduces is Linux,
+  # so they belong inside one guard rather than a per-package split. lib.optionals
+  # drops the whole list to empty off Linux. Unverified on darwin, no such machine
+  # available.
+  home.packages = lib.optionals pkgs.stdenv.isLinux (with pkgs; [
     # Screenshot tool moved to home/flameshot.nix, which manages it through the
     # services.flameshot module (X11 legacy grab + tray daemon).
 
@@ -22,8 +35,10 @@
 
     # Wine for the MonoGame shader compiler. MonoGame is not packaged in nixpkgs,
     # so it stays a .NET tool and template set installed with the dotnet SDK from
-    # languages.nix. mgfxc needs Wine on Linux, and Nix provides it here. Set
-    # MGFXC_WINE_PATH to this wine once built. See MIGRATION.md for the steps.
+    # languages.nix. mgfxc needs Wine on Linux, and Nix provides it here. Point
+    # MGFXC_WINE_PATH at this wine so mgfxc runs the shader compiler through it.
+    # There is no MIGRATION.md. It was cited for the fuller steps and never
+    # written, so the one step that matters is stated inline above.
     wineWow64Packages.stable
 
     # GUI apps moved off snaps to Nix during de-snap. Versions are newer or on
@@ -46,7 +61,7 @@
     # directly with no Flatpak sandbox grant. Replaces the apt prismlauncher.
     # It needs /run/opengl-driver to exist, see the note below.
     prismlauncher
-  ];
+  ]);
 
   # PrismLauncher needs no wrapper. It needs /run/opengl-driver to exist.
   #

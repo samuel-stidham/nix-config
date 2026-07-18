@@ -83,7 +83,7 @@ atomic) and dispatches. Run a single section by name, or `all` for everything.
 | `monogame` | MonoGame templates and the mgcb tools through the Nix dotnet SDK. |
 | `claude_code` | Official installer. Kept out of Nix so it self updates. |
 | `aws_cli` | AWS CLI v2 from AWS's bundled installer. Fresh install or `--update`. |
-| `atomic_extras` | Layer `mit-scheme` on an atomic base. Needs a reboot. |
+| `atomic_extras` | Nothing to layer. Scheme is guile from Nix on every distro. |
 | `savvy` | Prints a reminder. No Nix package. |
 
 ---

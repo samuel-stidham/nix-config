@@ -1,0 +1,16 @@
+# Recorded language-manager packages
+#
+# Tools installed through a language's own package manager that are deliberately
+# kept but NOT codified in Nix, because they are not in nixpkgs. The package audit
+# tool reads this file. Anything installed through a manager that is neither
+# provided by Nix nor listed here is flagged as unrecorded, so it gets recorded,
+# codified into a Nix module, or deleted.
+#
+# Format: one `manager:tool` per line, sorted. When a tool later lands in nixpkgs,
+# move it into the Nix modules and delete its line here.
+
+go:glyphs      # github.com/maaslalani/glyphs, ascii-art generator, not in nixpkgs
+go:goplay      # github.com/haya14busa/goplay, share to the Go playground, not in nixpkgs
+go:license     # github.com/nishanths/license, LICENSE-file generator, not in nixpkgs
+go:meteor      # github.com/stefanlogue/meteor, commit-message TUI; nixpkgs 'meteor' is the JS framework, not this
+npm:browse     # browserbase browse CLI, used for web research, not in nixpkgs

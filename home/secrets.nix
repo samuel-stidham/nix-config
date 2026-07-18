@@ -28,9 +28,12 @@ in
     # safetybox/passphrase, so automation can unlock the vault non-interactively:
     #   safetybox reveal --env --prefix global \
     #     --passphrase-file (passage show safetybox/passphrase | psub)
-    # passage is unlocked by its own age identity, which is the single root of
-    # trust carried out of band, stored in 1Password with a KeePassXC backup.
-    # Confirmed passage 1.7.4 and age 1.3.1.
+    # passage is unlocked by its own age identity, the single root of trust,
+    # carried out of band in 1Password. That is personal-login storage, kept
+    # deliberately separate from the coding secret chain: safetybox holds the
+    # coding secrets and passage holds only safetybox's passphrase, so no repo and
+    # no automation ever touches 1Password or the `op` CLI. KeePassXC backs up
+    # recovery codes, NOT this identity. Confirmed passage 1.7.4 and age 1.3.1.
     passage
     age
     # Secret scanners, global. Confirmed gitleaks 8.30.1 and trufflehog 3.95.7.

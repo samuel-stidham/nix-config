@@ -9,15 +9,60 @@ set -euo pipefail
 out="${1:-$(dirname "$0")/../steam/appids.txt}"
 mkdir -p "$(dirname "$out")"
 
-libs=("$HOME/.local/share/Steam/steamapps" "$HOME/.steam/steam/steamapps")
+# WHERE STEAM KEEPS ITS LIBRARY DEPENDS ON HOW IT WAS PACKAGED.
+#
+# The old list held only the two native paths, ~/.local/share/Steam and the
+# ~/.steam compat symlink. Those are what the deb and rpm builds use. Bazzite
+# ships Steam as a Flatpak, and Flatpak relocates an app's data under
+# ~/.var/app/<app-id>/data, so the tree lives at
+# ~/.var/app/com.valvesoftware.Steam/data/Steam instead. Neither native path
+# exists there.
+#
+# The old code guarded each root with `[ -d ] || continue`, so on Bazzite both
+# were skipped, the pipeline wrote zero lines, and the default $out is this
+# repo's own steam/appids.txt. A Bazzite user refreshing the list silently
+# truncated a good committed library to empty, and "wrote 0 appids" read like
+# success. The empty file then made steam-restore a no-op.
+#
+# The obvious fix, branching on $FAMILY, is the wrong one. Packaging does not
+# follow the distro. Someone runs the Flatpak on Ubuntu or the deb on Fedora.
+# So probe the filesystem for the roots that actually exist, and if none does,
+# abort loudly rather than overwrite a good file with nothing.
+#
+# The Flatpak data path is read off the Flatpak XDG convention, app id
+# com.valvesoftware.Steam. Unverified on Bazzite, no such machine available.
+candidates=(
+  "$HOME/.local/share/Steam/steamapps"
+  "$HOME/.steam/steam/steamapps"
+  "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/steamapps"
+  "$HOME/.var/app/com.valvesoftware.Steam/.steam/steam/steamapps"
+)
+
+libs=()
+for m in "${candidates[@]}"; do
+  [ -d "$m" ] && libs+=("$m")
+done
+
+if [ "${#libs[@]}" -eq 0 ]; then
+  echo "No Steam library found. Looked in:" >&2
+  printf '  %s\n' "${candidates[@]}" >&2
+  echo "Refusing to overwrite $out with an empty list." >&2
+  exit 1
+fi
 
 {
   for m in "${libs[@]}"; do
-    [ -d "$m" ] || continue
     for f in "$m"/appmanifest_*.acf; do
       [ -e "$f" ] || continue
-      id=$(grep -oP '"appid"\s*"\K[0-9]+' "$f" | head -1)
-      nm=$(grep -oP '"name"\s*"\K[^"]+' "$f" | head -1)
+      # `|| true` then a presence check, because set -euo pipefail turns a
+      # no-match grep (exit 1) into a script death, and this runs inside the
+      # { ... } | sort > "$out" pipeline where $out is the already-truncated
+      # committed appids.txt. Steam leaves empty and half-written .acf files
+      # during interrupted downloads, and on one of those the old code killed the
+      # subshell and left the good committed file destroyed. Skip, do not die.
+      id=$(grep -oP '"appid"\s*"\K[0-9]+' "$f" | head -1) || true
+      [ -n "$id" ] || continue
+      nm=$(grep -oP '"name"\s*"\K[^"]+' "$f" | head -1) || true
       # Skip the plumbing that Steam manages on its own.
       case "$nm" in
         *"Steam Linux Runtime"*|*"Steamworks Common"*|"Proton"*) continue ;;

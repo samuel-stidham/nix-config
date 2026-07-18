@@ -9,7 +9,7 @@ these.
 ## The services stack
 
 ```bash
-nix run ~/nix-config#services
+nix run .#services
 ```
 
 This starts the backends as a foreground group. Stop with Ctrl-C.
@@ -30,7 +30,7 @@ swap to real S3 or RustFS in production through config alone. The console is on
 ## The sites stack
 
 ```bash
-nix run ~/nix-config#sites
+nix run .#sites
 ```
 
 This starts nginx, php-fpm, and dnsmasq for `*.test`. It needs the one-time

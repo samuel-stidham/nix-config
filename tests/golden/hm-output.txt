@@ -1,0 +1,422 @@
+# ===== PACKAGE SET (home.packages closure) =====
+age-1.3.1-fish-completions
+alacritty-0.17.0-fish-completions
+atuin-18.17.0-fish-completions
+autoconf-2.73-fish-completions
+automake-1.18.1-fish-completions
+babashka-1.12.218-fish-completions
+bash-5.3p9
+bash-interactive-5.3p9
+bat-0.26.1
+bat-0.26.1-fish-completions
+bazel-7.6.0-fish-completions
+binutils-wrapper-2.46-fish-completions
+bison-3.8.2-fish-completions
+boost-1.89.0-fish-completions
+bruno-3.5.1-fish-completions
+btop-1.4.7-fish-completions
+bun-1.3.13-fish-completions
+cabal-install-3.16.1.0-fish-completions
+cargo-1.96.1-fish-completions
+ccache-4.13.6-fish-completions
+check-link-targets.sh
+clang-22.1.8-nogeneric-fish-completions
+clang-tools-22.1.8-fish-completions
+cleanup
+clippy-1.96.1-fish-completions
+clojure-1.12.5.1654-fish-completions
+cmake-4.1.2-fish-completions
+composer-2.10.2-fish-completions
+coreutils-9.11
+coreutils-9.11-fish-completions
+crystal-1.19.1-fish-completions
+curlie-1.8.2-fish-completions
+dbeaver-bin-26.1.1-fish-completions
+delve-1.27.0-fish-completions
+deno-2.9.2-fish-completions
+diffutils-3.12
+direnv-2.37.1-fish-completions
+dotnet-wrapped-combined-fish-completions
+duckdb-1.5.3-fish-completions
+dummy-fc-dir1-fish-completions
+dummy-fc-dir2-fish-completions
+dummy-xdg-mime-dirs1-fish-completions
+dummy-xdg-mime-dirs2-fish-completions
+eclipse-java-4.39-fish-completions
+elixir-1.18.4-fish-completions
+emacs-all-the-icons-fonts-5.0.0-fish-completions
+emacs-gtk3-30.2-fish-completions
+empty-directory
+erlang-28.5.0.3-fish-completions
+exercism-3.5.8-fish-completions
+eza-0.23.5-fish-completions
+fastfetch-2.65.2-fish-completions
+fd-10.4.2-fish-completions
+figlet-2.2.5-fish-completions
+findutils-4.10.0
+fish-4.8.0-fish-completions
+flameshot-14.0.0-fish-completions
+flex-2.6.4-fish-completions
+freeze-1.3-fish-completions
+fzf-0.74.0-fish-completions
+gcc-wrapper-16.1.0-fish-completions
+gci-0.14.0-fish-completions
+gdb-17.2-fish-completions
+gettext-1.0
+gh-2.96.0-fish-completions
+ghc-9.10.3-fish-completions
+ghidra-12.1.2-fish-completions
+ghostty-1.3.1-fish-completions
+git-2.54.0-fish-completions
+gitleaks-8.30.1-fish-completions
+glow-2.1.2-fish-completions
+gnugrep-3.12
+gnumake-4.4.1-fish-completions
+gnuplot-6.0.4-fish-completions
+gnused-4.10
+go-1.26.4-fish-completions
+gofumpt-0.10.0-fish-completions
+golangci-lint-2.12.2-fish-completions
+gopls-0.23.0-fish-completions
+gosec-2.27.1-fish-completions
+go-task-3.48.0-fish-completions
+gotests-1.9.0-fish-completions
+go-tools-2026.1-fish-completions
+govulncheck-1.6.0-fish-completions
+gperf-3.3-fish-completions
+guile-3.0.11-fish-completions
+gum-0.17.0-fish-completions
+halloy-2026.7.2-fish-completions
+haskell-language-server-2.13.0.0-fish-completions
+helix-25.07.1-fish-completions
+hm-modules-messages
+hm-session-vars.fish-fish-completions
+hm-session-vars.sh-fish-completions
+home-configuration-reference-manpage-fish-completions
+home-manager-files
+home-manager-fish-completions
+home-manager-generation
+home-manager-path
+home-manager.sh
+htop-3.5.1-fish-completions
+httpie-3.2.4-fish-completions
+imagemagick-7.1.2-27-fish-completions
+impl-1.5.0-fish-completions
+jetbrains-toolbox-3.6.1.85592-fish-completions
+jq-1.8.2-bin
+jq-1.8.2-fish-completions
+julia-bin-1.12.6-fish-completions
+kakoune-2026.05.21-fish-completions
+keepassxc-2.7.12-fish-completions
+lego-4.35.2-fish-completions
+leiningen-2.12.0-fish-completions
+librsvg-2.62.3-fish-completions
+libtool-2.5.4-fish-completions
+link
+lld-22.1.8-fish-completions
+lldb-22.1.8-fish-completions
+llvm-22.1.8-fish-completions
+love-11.5-fish-completions
+lua-5.5.0-fish-completions
+lua5.5-luarocks-3.13.0-1-fish-completions
+man-db-2.13.1-fish-completions
+meson-1.10.2-fish-completions
+micromamba-2.6.2-fish-completions
+msmtp-1.8.32-fish-completions
+ncurses-6.6
+neovim-0.12.4-fish-completions
+nerd-fonts-blex-mono-3.4.0+2.004-6.4.0--fish-completions
+nerd-fonts-caskaydia-cove-3.4.0+2407.24-fish-completions
+nerd-fonts-fira-code-3.4.0+6.2-fish-completions
+nerd-fonts-fira-mono-3.4.0+3.206-fish-completions
+nerd-fonts-gohufont-3.4.0+2.0-fish-completions
+nerd-fonts-iosevka-3.4.0+33.2.1-fish-completions
+nerd-fonts-jetbrains-mono-3.4.0+2.304-fish-completions
+nerd-fonts-symbols-only-3.4.0-fish-completions
+nerd-fonts-terminess-ttf-3.4.0+4.49.2-fish-completions
+ninja-1.13.2-fish-completions
+nodejs-24.18.0-fish-completions
+non-nixos-gpu
+non-nixos-gpu
+non-nixos-gpu-fish-completions
+obsidian-1.12.7-fish-completions
+octave-11.3.0-fish-completions
+odin-dev-2026-07-fish-completions
+openssl-3.6.3-fish-completions
+pandoc-cli-3.7.0.2-fish-completions
+passage-1.7.4a2-fish-completions
+pay-respects-0.8.8-fish-completions
+php-with-extensions-8.5.8-fish-completions
+pkg-config-wrapper-0.29.2-fish-completions
+poetry-2.4.1-fish-completions
+prismlauncher-11.0.2-fish-completions
+python3-3.14.6-fish-completions
+racket-9.2-fish-completions
+raylib-6.0-fish-completions
+restic-0.19.1-fish-completions
+ripgrep-15.1.0-fish-completions
+rsync-3.4.4-fish-completions
+ruby-3.4.9-fish-completions
+rust-analyzer-2026-06-15-fish-completions
+rustc-wrapper-1.96.1-fish-completions
+rustfmt-1.96.1-fish-completions
+rustlings-6.5.0-fish-completions
+safetybox-1.2.0-fish-completions
+sdl2-compat-2.32.70-fish-completions
+sdl3-3.4.10-fish-completions
+sd-switch-0.6.4
+shards-0.19.1-fish-completions
+shared-mime-info-2.4-fish-completions
+shellcheck-0.11.0-fish-completions
+spotify-1.2.90.451.gb094aab0-fish-completions
+sqlite-3.53.1-fish-completions
+stack-3.9.3-fish-completions
+starship-1.26.0-fish-completions
+steam.desktop-fish-completions
+syncthing-2.1.2-fish-completions
+systemd-261
+temurin-bin-21.0.11-fish-completions
+texstudio-4.9.5-fish-completions
+tmux-3.7b-fish-completions
+trufflehog-3.95.9-fish-completions
+turso-cli-1.0.29-fish-completions
+typescript-5.9.3-fish-completions
+typst-0.15.0-fish-completions
+unzip-6.0-fish-completions
+vhs-0.11.0-fish-completions
+vim-9.2.0541-fish-completions
+websocat-1.14.0-fish-completions
+wget-1.25.0-fish-completions
+wine-wow64-11.0-fish-completions
+xclip-0.13-fish-completions
+xh-0.26.1-fish-completions
+yq-go-4.53.3-fish-completions
+zed-editor-1.10.0-fish-completions
+zellij-0.44.3-fish-completions
+zig-0.16.0-fish-completions
+zoxide-0.10.0-fish-completions
+# ===== SYSTEMD USER UNITS =====
+## btrfs-scrub-storageprime.service
+[Service]
+Environment=PATH=/home/samuelstidham/.nix-profile/bin:/usr/bin:/bin:/usr/sbin:/sbin
+ExecStart=/nix/store/HASH-btrfs-scrub/bin/btrfs-scrub StoragePrime
+IOSchedulingClass=idle
+Nice=19
+Type=oneshot
+
+[Unit]
+Description=Scrub StoragePrime and mail on failure
+## btrfs-scrub-storageprime.timer
+[Install]
+WantedBy=timers.target
+
+[Timer]
+OnCalendar=*-*-01 03:00:00
+Persistent=true
+RandomizedDelaySec=30m
+
+[Unit]
+Description=Monthly btrfs scrub of StoragePrime
+## btrfs-scrub-workdrive.service
+[Service]
+Environment=PATH=/home/samuelstidham/.nix-profile/bin:/usr/bin:/bin:/usr/sbin:/sbin
+ExecStart=/nix/store/HASH-btrfs-scrub/bin/btrfs-scrub WorkDrive
+IOSchedulingClass=idle
+Nice=19
+Type=oneshot
+
+[Unit]
+Description=Scrub WorkDrive and mail on failure
+## btrfs-scrub-workdrive.timer
+[Install]
+WantedBy=timers.target
+
+[Timer]
+OnCalendar=*-*-02 03:00:00
+Persistent=true
+RandomizedDelaySec=30m
+
+[Unit]
+Description=Monthly btrfs scrub of WorkDrive
+## flameshot.service
+[Install]
+WantedBy=graphical-session.target
+
+[Service]
+Environment=PATH=/home/samuelstidham/.nix-profile/bin
+ExecStart=/nix/store/HASH-flameshot-14.0.0/bin/flameshot
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateUsers=true
+Restart=on-abort
+RestrictNamespaces=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+[Unit]
+After=graphical-session.target
+After=tray.target
+Description=Flameshot screenshot tool
+PartOf=graphical-session.target
+Requires=tray.target
+X-Restart-Triggers=/nix/store/HASH-flameshot.ini
+## home-certs.service
+[Service]
+Environment=PATH=/home/samuelstidham/.nix-profile/bin:/nix/store/HASH-systemd-261/bin:/usr/bin:/bin
+ExecStart=/nix/store/HASH-home-certs/bin/home-certs
+Type=oneshot
+
+[Unit]
+Description=Renew the *.home.samuelstidham.me certificate
+## home-certs.timer
+[Install]
+WantedBy=timers.target
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=45m
+
+[Unit]
+Description=Daily renewal check for *.home.samuelstidham.me
+## nginx.service
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecReload=/nix/store/HASH-nginx-1.30.3/bin/nginx -c /nix/store/HASH-nginx.conf -p /home/samuelstidham/.local/share/dev-services/nginx -s reload
+ExecStart=/nix/store/HASH-nginx-1.30.3/bin/nginx -c /nix/store/HASH-nginx.conf -p /home/samuelstidham/.local/share/dev-services/nginx
+ExecStartPre=/nix/store/HASH-nginx-cert-init.sh
+Restart=on-failure
+RestartSec=5s
+Type=simple
+
+[Unit]
+Description=nginx: *.test and *.home.samuelstidham.me
+## package-audit.service
+[Service]
+Environment=PATH=/home/samuelstidham/.nix-profile/bin:/usr/bin:/bin
+Environment=RECORDED_PACKAGES=/nix/store/HASH-recorded-packages.txt
+Environment=AUDIT_MAILTO=dqfan2012@gmail.com
+ExecStart=/nix/store/HASH-package-audit/bin/package-audit --quiet
+SuccessExitStatus=0 1
+Type=oneshot
+
+[Unit]
+Description=Audit language-manager installs against the Nix record
+## package-audit.timer
+[Install]
+WantedBy=timers.target
+
+[Timer]
+OnCalendar=Sun 10:00
+Persistent=true
+RandomizedDelaySec=1h
+
+[Unit]
+Description=Weekly language-manager package audit
+## syncthing-init.service
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecStart=/nix/store/HASH-merge-syncthing-config
+RemainAfterExit=true
+RuntimeDirectory=syncthing-init
+Type=oneshot
+
+[Unit]
+After=syncthing.service
+Description=Syncthing configuration updater
+Requires=syncthing.service
+## syncthing.service
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecStart=/nix/store/HASH-syncthing-2.1.2/bin/syncthing serve --no-browser --no-restart --no-upgrade '--gui-address=127.0.0.1:8384'
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateUsers=true
+Restart=on-failure
+RestartForceExitStatus=3
+RestartForceExitStatus=4
+RestrictNamespaces=true
+SuccessExitStatus=3
+SuccessExitStatus=4
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+[Unit]
+After=network.target
+Description=Syncthing - Open Source Continuous File Synchronization
+Documentation=man:syncthing(1)
+StartLimitBurst=4
+StartLimitIntervalSec=60
+# ===== GENERATED config.fish =====
+# ~/.config/fish/config.fish: DO NOT EDIT -- this file has been generated
+# automatically by home-manager.
+
+# Only execute this file once per shell.
+set -q __fish_home_manager_config_sourced; and exit
+set -g __fish_home_manager_config_sourced 1
+
+source /nix/store/HASH-hm-session-vars.fish/etc/profile.d/hm-session-vars.fish
+
+# Source handler functions
+
+fish_config theme choose catppuccin-frappe
+
+source $HOME/fish/env.fish
+source $HOME/fish/functions.fish
+source $HOME/fish/configure_path.fish
+source $HOME/fish/aliases.fish
+source $HOME/fish/secrets.fish
+
+status is-login; and begin
+
+    # Login shell initialisation
+
+end
+
+status is-interactive; and begin
+
+    # Abbreviations
+
+    # Aliases
+    alias la 'eza -a'
+    alias ll 'eza -l'
+    alias lla 'eza -la'
+    alias ls eza
+    alias lt 'eza --tree'
+
+    # Interactive shell initialisation
+    set -gx FZF_CTRL_R_COMMAND ''
+    /nix/store/HASH-fzf-0.74.0/bin/fzf --fish | source
+
+    /nix/store/HASH-zoxide-0.10.0/bin/zoxide init fish | source
+
+    if test "$TERM" != dumb
+        /nix/store/HASH-starship-1.26.0/bin/starship init fish | source
+
+    end
+
+    # add completions generated by Home Manager to $fish_complete_path
+    begin
+        set -l joined (string join " " $fish_complete_path)
+        set -l prev_joined (string replace --regex "[^\s]*generated_completions.*" "" $joined)
+        set -l post_joined (string replace $prev_joined "" $joined)
+        set -l prev (string split " " (string trim $prev_joined))
+        set -l post (string split " " (string trim $post_joined))
+        set fish_complete_path $prev "/home/samuelstidham/.local/share/fish/home-manager/generated_completions" $post
+    end
+
+    source /nix/store/HASH-atuin-fish-config.fish
+
+    if not functions -q __direnv_export_eval
+        /nix/store/HASH-direnv-2.37.1/bin/direnv hook fish | source
+    end
+
+end

@@ -1,0 +1,448 @@
+# ===== FUNCTION AND ALIAS NAMES =====
+..
+...
+....
+.....
+......
+abbr
+add_to_path
+alias
+b
+backup
+bg
+c
+cd
+cdh
+cleanup
+contains_seq
+copy
+diff
+dirh
+dirs
+disown
+down-or-search
+dr
+e
+ea
+eam
+edit_command_buffer
+efm
+el
+em
+es
+et
+ex-cd
+ex-get
+exl
+export
+ex-submit
+ex-test
+ex-workspace
+fg
+fish_add_path
+fish_breakpoint_prompt
+fish_clipboard_copy
+fish_clipboard_paste
+fish_commandline_append
+fish_commandline_prepend
+fish_command_not_found
+fish_config
+fish_default_key_bindings
+fish_default_mode_prompt
+fish_delta
+fish_fossil_prompt
+fish_git_prompt
+fish_greeting
+fish_hg_prompt
+fish_hybrid_key_bindings
+fish_in_macos_terminal
+fish_is_root_user
+fish_jj_prompt
+fish_job_summary
+fish_mode_prompt
+fish_opt
+fish_print_git_action
+fish_print_hg_root
+fish_prompt
+fish_status_to_signal
+fish_svn_prompt
+fish_title
+fish_update_completions
+fish_vcs_prompt
+fish_vi_cursor
+fish_vi_key_bindings
+foundry
+funced
+funcsave
+g
+gd
+generatetoken
+gf
+gr
+grep
+grubup
+help
+history
+hw
+ipc
+isatty
+kill
+la
+ll
+ls
+man
+N_
+nextd
+nextd-or-forward-token
+nugetclean
+open
+p3
+popd
+prevd
+prevd-or-backward-token
+prompt_hostname
+prompt_login
+prompt_pwd
+psmem
+psmem10
+psub
+pushd
+quit
+realpath
+rmpkg
+seq
+servers
+setenv
+suspend
+tarnow
+trap
+umask
+untar
+upd
+update_ssh_auth_sock
+up-or-search
+v
+vared
+vd
+wait
+wg
+# ===== EXPORTED VARIABLES =====
+CAML_LD_LIBRARY_PATH '/home/samuelstidham/.opam/default/lib/stublibs' '/home/samu…
+CODE /home/samuelstidham/code
+COMPOSER_ALLOW_XDEBUG 1
+DEFAULT_USER samuelstidham
+DOTNET_CLI_TELEMETRY_OPTOUT 1
+DOTNET_INSTALL /home/samuelstidham/.dotnet/tools
+DOTNET_ROLL_FORWARD_TO_PRERELEASE 1
+EDITOR nvim
+__ETC_PROFILE_NIX_SOURCED 1
+FISH_CONFIG /home/samuelstidham/fish
+FZF_DEFAULT_COMMAND 'rg --no-messages --files --no-ignore --hidden --follow --gl…
+FZF_DEFAULT_OPTS '--no-separator --layout=reverse --inline-info'
+GCC_COLORS 'error=01;91:warning=01;95:note=01;96:caret=01;92:locus=01;9…
+GODOT /home/samuelstidham/.config/godotenv/godot/bin/godot
+GOPATH /home/samuelstidham/go
+GOPRIVATE github.com/dqfan2012
+HOME /home/samuelstidham
+INFOPATH '' '/usr/local/texlive/2026/texmf-dist/doc/info'
+LANG en_US.UTF-8
+LS_COLORS '*~=0;38;2;58;60;78:bd=1;38;2;241;250;140;48;2;40;42;54:ca=0…
+MANPAGER 'sh -c 'col -bx | bat -l man -p''
+MANPATH '' '/home/samuelstidham/.nix-profile/share/man' '/usr/local/…
+MANROFFOPT -c
+__NIX_ENV_SOURCED 1
+NIX_HOME /home/samuelstidham/.nix-profile
+NIX_PROFILES '/nix/var/nix/profiles/default /home/samuelstidham/.nix-profile'
+NIX_SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
+OCAMLTOP_INCLUDE_PATH /home/samuelstidham/.opam/default/lib/toplevel
+OCAML_TOPLEVEL_PATH /home/samuelstidham/.opam/default/lib/toplevel
+OPAM_LAST_ENV /home/samuelstidham/.opam/.last-env/env-22532c7008a87a85104f…
+OPAM_SWITCH_PREFIX /home/samuelstidham/.opam/default
+PATH '/home/samuelstidham/.opam/default/bin' '/home/samuelstidham…
+PWD /home/samuelstidham/code/samuel-stidham/nix-config
+QT_QPA_PLATFORM xcb
+SAVVY_HOME /home/samuelstidham/.savvy
+SHLVL
+STARSHIP_CACHE /home/samuelstidham/.cache/starship
+STARSHIP_CONFIG /home/samuelstidham/.config/starship/starship.toml
+TERM xterm-256color
+TEXLIVE_HOME /usr/local/texlive/2026
+USER samuelstidham
+VEDITOR code
+XDG_CACHE_HOME /home/samuelstidham/.cache
+XDG_CONFIG_HOME /home/samuelstidham/.config
+XDG_DATA_DIRS /usr/local/share:/usr/share:/home/samuelstidham/.nix-profile…
+XDG_DATA_HOME /home/samuelstidham/.local/share
+XDG_STATE_HOME /home/samuelstidham/.local/state
+ZLS_HOME /home/samuelstidham/zls
+_ZO_FZF_OPTS '--no-sort --keep-right --height=50% --info=inline --layout=…
+# ===== PATH (order is behavior) =====
+/home/samuelstidham/.opam/default/bin
+/home/samuelstidham/.nix-profile/bin
+/home/samuelstidham/.deno/bin
+/home/samuelstidham/.bun/bin
+/home/samuelstidham/.cargo/bin
+/home/samuelstidham/bin
+/home/samuelstidham/.local/bin
+/home/samuelstidham/.dotnet/tools
+/home/samuelstidham/sdk
+/home/samuelstidham/go/bin
+/home/samuelstidham/.local/share/JetBrains/Toolbox/scripts
+/home/samuelstidham/.config/composer/vendor/bin
+/home/samuelstidham/.savvy/bin
+/usr/local/texlive/2026/bin/x86_64-linux
+/home/samuelstidham/zls/zig-out/bin
+/usr/bin
+/bin
+/nix/store/HASH-curl-8.21.0-bin/bin
+/nix/store/HASH-getconf-glibc-2.42-67/bin
+/nix/store/HASH-unzip-6.0/bin
+/nix/store/HASH-bubblewrap-0.11.2/bin
+# ===== HAND-WRITTEN FUNCTION BODIES =====
+function add_to_path
+    if not contains $argv[1] $PATH
+        set -x PATH $argv[1] $PATH
+    end
+end
+
+function backup --argument-names filename
+    cp $filename $filename.bak
+end
+
+function cleanup --description 'Remove orphaned packages and clear the package cache'
+    switch (__pkg_manager)
+        case apt
+            sudo apt autoremove -y && sudo apt autoclean
+        case dnf
+            sudo dnf autoremove -y && sudo dnf clean all
+        case rpm-ostree
+            # No orphan concept on an atomic base: layered packages are explicit
+            # and nothing is auto-pulled, so there is nothing to autoremove.
+            # `cleanup -m` drops cached rpm-md metadata, the only cache this verb
+            # owns here.
+            rpm-ostree cleanup -m
+        case zypper
+            # zypper has no autoremove verb, so the orphan half of cleanup has no
+            # equivalent. `zypper clean --all` clears the package cache, the
+            # autoclean half. Orphans on suse need `zypper packages --unneeded`
+            # reviewed by hand, never an unattended rm.
+            sudo zypper clean --all
+        case '*'
+            echo "cleanup: no supported package manager found" >&2
+            return 1
+    end
+end
+
+function copy
+    set count (count $argv)
+    if test "$count" -eq 2 -a -d "$argv[1]"
+        set from (echo $argv[1] | string trim --right --chars=/)
+        set to $argv[2]
+        command cp -r $from $to
+    else
+        command cp $argv
+    end
+end
+
+function ex-cd --description 'cd to an already-downloaded exercise: ex-cd rust clock'
+    if test (count $argv) -lt 2
+        echo "usage: ex-cd <track> <exercise>"
+        return 1
+    end
+    set -l dir (ex-workspace)/$argv[1]/$argv[2]
+    if not test -d $dir
+        echo "not downloaded: $dir"
+        return 1
+    end
+    cd $dir
+end
+
+function ex-get --description 'Download an exercism exercise and cd into it: ex-get rust clock'
+    if test (count $argv) -lt 2
+        echo "usage: ex-get <track> <exercise>"
+        return 1
+    end
+    set -l track $argv[1]
+    set -l exercise $argv[2]
+
+    # download exits 255 on failure, including "You have not joined this track",
+    # so the status is worth trusting. Without this check a failed download would
+    # cd you into a directory that does not exist.
+    set -l out (exercism download --track=$track --exercise=$exercise $argv[3..-1] 2>&1)
+    if test $status -ne 0
+        printf '%s\n' $out
+        return 1
+    end
+
+    set -l dir (ex-workspace)/$track/$exercise
+    if not test -d $dir
+        printf '%s\n' $out
+        echo "downloaded, but $dir is not there. Has the workspace layout changed?"
+        return 1
+    end
+    cd $dir
+end
+
+function ex-submit --description 'Submit the current exercise'
+    # Files are optional: the CLI works out what to send from the exercise dir.
+    exercism submit $argv
+end
+
+function ex-test --description 'Run the current exercise tests, detecting the track from the files'
+    # The marker file names the toolchain, so there is nothing to configure and
+    # nothing to pass. Walks up, so this works from src/ as well as the root.
+    set -l dir (pwd)
+    while test "$dir" != /
+        if test -f $dir/Cargo.toml
+            pushd $dir; cargo test $argv; set -l r $status; popd; return $r
+        else if test -f $dir/go.mod
+            pushd $dir; go test ./... $argv; set -l r $status; popd; return $r
+        else if test -f $dir/build.zig
+            pushd $dir; zig build test $argv; set -l r $status; popd; return $r
+        else if test -f $dir/package.json
+            pushd $dir; npm test $argv; set -l r $status; popd; return $r
+        end
+        set dir (path dirname $dir)
+    end
+    echo "no Cargo.toml, go.mod, build.zig or package.json above "(pwd)
+    return 1
+end
+
+function ex-workspace --description 'Path of the exercism workspace'
+    jq -r '.workspace' $HOME/.config/exercism/user.json 2>/dev/null
+end
+
+function foundry --description 'Launch FoundryVTT in the background, detached'
+    nohup $HOME/foundryvtt/foundryvtt >/dev/null 2>&1 &
+end
+
+function gd --description 'Run Godot in the background, detached, forwarding args'
+    nohup $GODOT $argv >/dev/null 2>&1 &
+end
+
+function generatetoken --description 'Generates a secure 64-character hex key using the first available method.'
+    set token ""
+
+    if type -q python3
+        echo "(using Python 3 secrets module)"
+        set token (python3 -c 'import secrets; print(secrets.token_hex(32))')
+    else if type -q openssl
+        echo "(using OpenSSL)"
+        set token (openssl rand -hex 32)
+    else if type -q xxd
+        echo "(using /dev/urandom + xxd)"
+        set token (head -c 32 /dev/urandom | xxd -p | tr -d '\n')
+    else if type -q hexdump
+        echo "(using /dev/urandom + hexdump)"
+        set token (hexdump -n 32 -v -e '1/1 "%02x"' /dev/urandom)
+    else
+        echo "Error: No suitable method found. Install python3, openssl, xxd, or hexdump."
+        return 1
+    end
+
+    echo $token
+end
+
+function grubup --description 'Regenerate the bootloader configuration'
+    if command -q rpm-ostree
+        echo "grubup: atomic host, ostree owns the bootloader, nothing to do" >&2
+        return 1
+    else if command -q update-grub
+        sudo update-grub
+    else if command -q grub2-mkconfig
+        sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+    else
+        echo "grubup: no grub config generator found" >&2
+        return 1
+    end
+end
+
+function history
+    builtin history --show-time='%F %T '
+end
+
+function __pkg_manager
+    if command -q rpm-ostree
+        echo rpm-ostree
+    else if command -q apt
+        echo apt
+    else if command -q dnf
+        echo dnf
+    else if command -q zypper
+        echo zypper
+    end
+end
+
+function rmpkg --description 'Remove one or more packages'
+    switch (__pkg_manager)
+        case apt
+            sudo apt remove $argv
+        case dnf
+            sudo dnf remove $argv
+        case rpm-ostree
+            # uninstall drops a layered package. A base package needs
+            # `rpm-ostree override remove`, deliberately not wired here because
+            # removing a base package is not the everyday case this serves.
+            rpm-ostree uninstall $argv
+        case zypper
+            sudo zypper remove $argv
+        case '*'
+            echo "rmpkg: no supported package manager found" >&2
+            return 1
+    end
+end
+
+function servers --description 'Open the dev-servers zellij layout'
+    # -n / --new-session-with-layout starts a NEW zellij session with a layout
+    # (home/terminals.nix). Plain --layout without -n tries to add a tab to an
+    # existing session instead, which is why "--session X --layout Y" failed with
+    # "There is no active session". This opens a fresh session each run, so quit a
+    # running one first or its stacks collide (visibly, since close_on_exit=false).
+    if set -q ZELLIJ
+        echo "You're inside zellij already; run this from a plain terminal."
+        return 1
+    end
+    zellij -n servers --layout servers
+end
+
+function upd --description 'Update and upgrade all system packages'
+    switch (__pkg_manager)
+        case apt
+            sudo apt update && sudo apt upgrade -y
+        case dnf
+            sudo dnf upgrade -y
+        case rpm-ostree
+            # Atomic base: rpm-ostree stages a new deployment, no sudo, polkit
+            # authenticates. The change lands on the next boot by design.
+            rpm-ostree upgrade
+        case zypper
+            # Tumbleweed is rolling and has no update/upgrade split. `zypper dup`
+            # is the one correct verb there, and `zypper up` is explicitly wrong
+            # per openSUSE docs. Leap does split them and wants `zypper up`. The
+            # os-release ID is the only local signal that separates the two.
+            sudo zypper ref
+            # string match, a fish builtin, not grep: it reads os-release straight
+            # off stdin with no subprocess and no dependency on which grep is on
+            # PATH. grep is no longer aliased, but this is still the cleaner idiom.
+            # The `"?` is load bearing: real Tumbleweed ships ID="opensuse-tumbleweed"
+            # WITH quotes, so an unquoted `^ID=opensuse-tumbleweed` never matched and
+            # upd silently ran `zypper up`, the verb the comment above calls wrong for
+            # a rolling release. bootstrap sources os-release so its quotes are gone,
+            # which is why the two differ. The optional quote matches both forms and
+            # still rejects opensuse-leap.
+            if string match -qr '^ID="?opensuse-tumbleweed' </etc/os-release
+                sudo zypper dup
+            else
+                sudo zypper up
+            end
+        case '*'
+            echo "upd: no supported package manager found" >&2
+            return 1
+    end
+end
+
+function update_ssh_auth_sock
+    if not set -q SSH_AUTH_SOCK
+        eval (ssh-agent -c)
+    end
+end

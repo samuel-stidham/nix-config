@@ -1,4 +1,4 @@
-{ pkgs, config, ... }:
+{ pkgs, config, lib, ... }:
 
 let
   # Where this repo lives. One binding, so moving the checkout is one edit here
@@ -86,5 +86,13 @@ in
     }
   '';
 
-  home.packages = [ pkgs.ghostty ];
+  # Guarded to Linux. The flake applies this home.nix to aarch64-darwin too, and
+  # `pkgs.ghostty` carries Linux-only `meta.platforms`. Forcing it on darwin
+  # throws "not available on the requested hostPlatform" and aborts eval. On macOS
+  # Ghostty ships as a Homebrew cask outside Nix, so there is nothing to install
+  # here anyway. lib.optionals drops the package to an empty list off Linux. The
+  # ghostty config file above stays unguarded on purpose, since a cask Ghostty
+  # would still read ~/.config/ghostty. Unverified on darwin, no such machine
+  # available.
+  home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.ghostty ];
 }

@@ -56,7 +56,10 @@
     xh          # xh
     curlie      # curlie
 
-    # Cargo installs brought into Nix so nothing lives in ~/.cargo/bin.
+    # Cargo installs codified into Nix, so these come from the store and lead on
+    # PATH. ~/.cargo/bin is also on PATH now (configure_path.fish) for uncodified
+    # ad-hoc installs, and a tool that sticks gets pulled in here so the Nix copy
+    # wins. rustlings in home/languages.nix is the newest example.
     websocat    # websocket cli, confirmed 1.14.0
     pay-respects # command correction, already initialized in fish, confirmed 0.8.8
 
@@ -79,7 +82,8 @@
     # out to: typst is a self-contained PDF engine (pandoc --pdf-engine=typst),
     # librsvg renders SVG images into PDF/docx, imagemagick handles image format
     # conversions. LaTeX-based PDF (--pdf-engine=xelatex) uses the existing
-    # /usr/local/texlive install, see .agents/outside-nix.md.
+    # /usr/local/texlive install. That TeX Live lives outside Nix, and there is
+    # no .agents/outside-nix.md recording it. This comment is the record.
     pandoc
     typst
     librsvg

@@ -5,7 +5,8 @@
 # PATH. Ubuntu's own gcc and clang stay untouched for the system layer.
 #
 # Attributes confirmed against github:NixOS/nixpkgs/nixos-unstable on 2026-07-04.
-# See .agents/languages.md for the resolved versions and the confirm commands.
+# The resolved versions are stated inline below, per toolchain. There is no
+# .agents/languages.md. It was cited here but never written.
 
 let
   # Step 6: latest gcc and clang/llvm from Nix, pinned by version. These lead on
@@ -71,6 +72,12 @@ in
     gosec             # confirmed 2.27.1
     govulncheck       # confirmed 1.5.0
     gotests           # confirmed 1.9.0
+    # gci and impl were `go install` binaries in ~/go/bin. Both are in nixpkgs, so
+    # they come from the store now and stay reproducible. goplay, glyphs, meteor
+    # and nishanths/license are NOT in nixpkgs, so they stay as go installs and are
+    # recorded in docs/recorded-packages.txt instead.
+    gci               # confirmed 0.14.0
+    impl              # confirmed 1.5.0
 
     # Rust (rust-projects, tauri-projects). rustup usage moves to nixpkgs
     # rustc/cargo. Swap in rust-overlay later if you need pinned channels.
@@ -79,6 +86,18 @@ in
     rustfmt
     clippy
     rust-analyzer
+    # rustlings, the guided Rust exercise set. It was a `cargo install rustlings`
+    # living in ~/.cargo/bin. Codified here so it comes from the store. ~/.cargo/bin
+    # is on PATH now, but the Nix profile leads it (configure_path.fish), so this
+    # copy wins. Drop the stray cargo build with `cargo uninstall rustlings`.
+    rustlings         # confirmed 6.5.0
+
+    # Scheme. guile, chosen over mit-scheme, which was a real package-parity gap.
+    # mit-scheme is absent from Fedora and openSUSE and only ever came from apt on
+    # Ubuntu. guile is in nixpkgs and packaged on every distro, so one Nix package
+    # gives the same Scheme everywhere and the system layer installs none. See the
+    # mit-scheme tombstones in bootstrap.sh for the absence evidence.
+    guile             # confirmed 3.0.11
 
     # Zig (zig-projects). Confirmed 0.16.0, matches the /opt/zig build.
     zig
@@ -104,15 +123,17 @@ in
     leiningen
     babashka
 
-    # OCaml. Was opam at /usr/local plus a ~/.opam switch. Nix owns it now.
-    # Confirmed ocaml 5.4.1, opam 2.5.1, dune 3.21.1. opam can still manage its
-    # own switches on top if you need pinned package sets.
-    ocaml
-    opam
-    dune_3
-    ocamlPackages.utop
-    ocamlPackages.ocaml-lsp
-    ocamlformat
+    # OCaml is NOT from Nix. TOMBSTONE: this list held ocaml, opam, dune_3,
+    # ocamlPackages.utop, ocamlPackages.ocaml-lsp and ocamlformat. They are gone on
+    # purpose. OCaml development is switch-based, and opam is the toolchain manager
+    # the OCaml project itself ships, so a Nix ocaml only ever shadowed or fought
+    # the opam switch the work actually used. opam owns the whole toolchain now,
+    # installed the way upstream recommends rather than pinned here:
+    #   bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh)"
+    #   opam init
+    # dune, utop, ocaml-lsp-server and ocamlformat come from the switch. The `opam
+    # env` line in fish/configure_path.fish puts the active switch on PATH, and the
+    # `ocaml` section in bootstrap.sh installs the opam binary on a fresh machine.
 
     # Haskell. Was ghcup at ~/.ghcup. No project folder, but you have it
     # installed. Confirmed ghc 9.10.3, cabal 3.16.1.0, HLS 2.13.0.0, stack 3.9.3.
@@ -161,8 +182,9 @@ in
     love
 
     # TeXstudio. Confirmed 4.9.5. It has no language folder. It is a GUI app, so
-    # it is an explicit exception to the Flatpak-first rule in
-    # .agents/install-policy.md. You chose Nix for it on purpose.
+    # it is an explicit exception to the Flatpak-first rule. That rule has no
+    # separate doc, see the header of home/apps.nix. You chose Nix for it on
+    # purpose.
     texstudio
 
     # Java is handled in jdks.nix, which runs Temurin 8, 11, 17, 21, 25, and 26

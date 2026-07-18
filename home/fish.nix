@@ -14,21 +14,25 @@
   programs.fish = {
     enable = true;
 
-    # Runs for every shell, login or not. Environment and PATH first, then the
-    # global secrets from the safetybox vault, so they are set in every shell
-    # from any directory, scripts included. secrets.fish holds no secret values,
-    # only the reveal command, so it is tracked in this repo like any other
-    # config.
+    # Every shell, login or not, sources the whole fish tree here, so aliases and
+    # functions exist in scripts and non-interactive shells too, not only in a
+    # terminal. Anything that must stay interactive-only guards itself with
+    # `status is-interactive` inside these files. Each file is sourced exactly
+    # ONCE. env.fish used to also source aliases and functions itself, which
+    # loaded them a second time in interactive shells. That source is gone now.
+    #
+    # ORDER IS LOAD BEARING. functions.fish comes before configure_path.fish,
+    # because configure_path.fish calls add_to_path, which functions.fish
+    # defines. env.fish is first because it sets the variables the rest read.
+    # secrets.fish is last because its reveal command needs safetybox on PATH.
+    # secrets.fish holds no secret values, only the reveal command, so it is
+    # tracked in this repo like any other config.
     shellInit = ''
       source $HOME/fish/env.fish
-      source $HOME/fish/configure_path.fish
-      source $HOME/fish/secrets.fish
-    '';
-
-    # Runs for interactive shells only. Aliases and functions.
-    interactiveShellInit = ''
-      source $HOME/fish/aliases.fish
       source $HOME/fish/functions.fish
+      source $HOME/fish/configure_path.fish
+      source $HOME/fish/aliases.fish
+      source $HOME/fish/secrets.fish
     '';
 
     # secure_sites generates a one-year self-signed TLS cert for every folder in

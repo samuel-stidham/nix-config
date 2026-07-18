@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 # Java toolchain. This replaces sdkman, which managed Temurin 8, 11, 17, 21, 25,
 # and 26 plus leiningen. Nix owns every JDK now. leiningen and clojure live in
@@ -16,9 +16,17 @@
 #   temurin-bin-17 17.0.19    temurin-bin-26 26.0.1
 
 {
+  # GUARDED ON LINUX. Temurin JDK 8 has no aarch64-darwin build: Adoptium never
+  # shipped JDK 8 for Apple Silicon, so an unguarded temurin-bin-8 aborts the
+  # darwin eval with "unsupported CPU aarch64", which allowUnsupportedSystem does
+  # not silence. The flake declares aarch64-darwin and applies this same module,
+  # so the whole JDK set has to be Linux-only. PrismLauncher and the multi-JDK
+  # layout are Linux workflows anyway. The pattern is the one CLAUDE.md names:
+  # lib.optionals for home.packages, lib.mkIf for home.file.
+
   # Default JDK on PATH. Only one java can lead, so only this one goes in
   # packages. The rest are reached through the stable symlinks below.
-  home.packages = [ pkgs.temurin-bin-21 ];
+  home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.temurin-bin-21 ];
 
   # Stable per-version JDK homes. Point a PrismLauncher instance at
   # ~/.local/share/jdks/temurin-<N>/bin/java. Minecraft version to Java version:
@@ -26,10 +34,12 @@
   #   1.17 through 1.20.4   -> temurin-17
   #   1.20.5 and newer      -> temurin-21
   # 11, 25, and 26 are kept for other JVM work.
-  home.file.".local/share/jdks/temurin-8".source = pkgs.temurin-bin-8;
-  home.file.".local/share/jdks/temurin-11".source = pkgs.temurin-bin-11;
-  home.file.".local/share/jdks/temurin-17".source = pkgs.temurin-bin-17;
-  home.file.".local/share/jdks/temurin-21".source = pkgs.temurin-bin-21;
-  home.file.".local/share/jdks/temurin-25".source = pkgs.temurin-bin-25;
-  home.file.".local/share/jdks/temurin-26".source = pkgs.temurin-bin-26;
+  home.file = lib.mkIf pkgs.stdenv.isLinux {
+    ".local/share/jdks/temurin-8".source = pkgs.temurin-bin-8;
+    ".local/share/jdks/temurin-11".source = pkgs.temurin-bin-11;
+    ".local/share/jdks/temurin-17".source = pkgs.temurin-bin-17;
+    ".local/share/jdks/temurin-21".source = pkgs.temurin-bin-21;
+    ".local/share/jdks/temurin-25".source = pkgs.temurin-bin-25;
+    ".local/share/jdks/temurin-26".source = pkgs.temurin-bin-26;
+  };
 }

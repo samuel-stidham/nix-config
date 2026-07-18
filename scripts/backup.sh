@@ -22,6 +22,13 @@
 #   ./backup.sh restore <id> <dir>   # restore a snapshot to a target dir
 set -euo pipefail
 
+# The shared drive-mount resolver. backup.sh is hand-run from the checkout, never
+# readFile'd into the Nix store, so sourcing the sibling is safe here. drive_mount
+# answers where a labelled drive IS right now, which is /media on this Ubuntu box,
+# /run/media on Fedora and SUSE, and /var/mnt on Bazzite. See its header for why a
+# single hardcoded /media/$USER path was wrong on every family but this one.
+. "$(dirname "${BASH_SOURCE[0]}")/drive-mount.sh"
+
 # ---- config. This bucket is provisioned by the infra-backups OpenTofu repo.
 # It is separate from samuelstidham-backups, which is the website's Litestream
 # and archive bucket. ----
@@ -30,10 +37,25 @@ REGION="${AWS_DEFAULT_REGION:-us-east-1}"
 export RESTIC_REPOSITORY="s3:s3.${REGION}.amazonaws.com/${BUCKET}"
 export AWS_DEFAULT_REGION="$REGION"
 
-# Minecraft lives here with the Nix PrismLauncher. For the Flatpak build it is
-# ~/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/instances, so set
-# MC_DIR in the environment on Bazzite.
-MC_DIR="${MC_DIR:-$HOME/.local/share/PrismLauncher/instances}"
+# Minecraft lives with the Nix PrismLauncher at the first path below. On Bazzite
+# PrismLauncher is the Flatpak and its data is at the second path, which the old
+# single default ignored, so mc-backup there snapshotted an absent directory and
+# still exited 0. Probe for the first path that exists rather than branch on the
+# distro, and fall back to the Nix path so mc_running and mc-backup still have a
+# target on a machine where no instance has been created yet. MC_DIR in the
+# environment overrides the probe.
+MC_DIR="${MC_DIR:-}"
+if [ -z "$MC_DIR" ]; then
+  for _mc_candidate in \
+    "$HOME/.local/share/PrismLauncher/instances" \
+    "$HOME/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher/instances"; do
+    if [ -d "$_mc_candidate" ]; then
+      MC_DIR="$_mc_candidate"
+      break
+    fi
+  done
+  MC_DIR="${MC_DIR:-$HOME/.local/share/PrismLauncher/instances}"
+fi
 
 # The Firefox profile. This is Tier 1 and easy to miss: Firefox Sync carries
 # bookmarks, history, and the list of add-ons, but NOT each extension's own
@@ -41,38 +63,100 @@ MC_DIR="${MC_DIR:-$HOME/.local/share/PrismLauncher/instances}"
 # assignments, and uBlock's settings live only here. Backing up the profile is
 # what actually makes Firefox come back identical, with no export/import dance.
 #
-# On Bazzite this becomes the Flatpak path, so override it there:
-#   ~/.var/app/org.mozilla.firefox/.mozilla/firefox
-FIREFOX_PROFILE="${FIREFOX_PROFILE:-$HOME/snap/firefox/common/.mozilla/firefox}"
+# The old default was the snap path, which exists only where Firefox is a snap,
+# meaning Ubuntu and Pop. On Debian, Mint, Fedora, SUSE and Bazzite that directory
+# is absent, so restic warned about the snap path the operator never had and the
+# real profile was never a backup target. That is the worst kind of miss: the
+# warning points at the wrong thing while Tier 1 data goes uncaptured. The probe in
+# resolve_backup_paths tries snap, then Flatpak, then the native path, and fails
+# loudly if none exist rather than hand restic a phantom path. FIREFOX_PROFILE in
+# the environment overrides the probe.
+FIREFOX_PROFILE="${FIREFOX_PROFILE:-}"
 
 # The Calibre library lives on StoragePrime, not the nvme. It is still Tier 1 and
 # still backed up: StoragePrime survives a reinstall, but it does not survive a
 # drive failure, and the library is irreplaceable.
 #
+# The old default hardcoded /media/samuelstidham/StoragePrime, which is Ubuntu's
+# udisks path with a username baked in. Fedora and SUSE mount at /run/media/$USER
+# and Bazzite at /var/mnt, so on every family but this one the literal named a
+# directory that does not exist and the library was silently omitted. The mount
+# point is resolved at backup time through drive_mount instead, in
+# resolve_backup_paths, so the path follows the drive on whatever family this is.
+#
 # Keep this in step with Calibre's own library_path in
 # ~/.config/calibre/global.py.json. If they drift, restic keeps backing up an
-# empty or stale directory and nobody notices until a restore.
-CALIBRE_LIBRARY="${CALIBRE_LIBRARY:-/media/samuelstidham/StoragePrime/Books/Calibre Library}"
+# empty or stale directory and nobody notices until a restore. CALIBRE_LIBRARY in
+# the environment overrides the resolver.
+CALIBRE_LIBRARY="${CALIBRE_LIBRARY:-}"
 
 # Tier 1 only: the irreplaceable set. Everything else is rebuilt by bootstrap.sh,
 # home-manager, and steam-restore.sh, or lives on WorkDrive which a reinstall
 # never touches. See "Machine File Structure" in the obsidian vault.
-BACKUP_PATHS=(
-  "$HOME/code"                 # all source. the whole point
-  "$HOME/Documents"            # Education, Employment, Vital, obsidian-vaults
-  "$CALIBRE_LIBRARY"           # library + metadata.db
-  "$HOME/forgejo"              # critical infra: stack, repos, DB, runner config
-  "$HOME/sites"                # the *.test project roots
-  "$MC_DIR"                    # worlds + journeymap + the exact mod versions
-  "$FIREFOX_PROFILE"           # extension configs Sync does not carry
-  "$HOME/Desktop"              # safety net. Should be near empty after the reorg
-  "$HOME/Sync"                 # syncthing: SNHU coursework + library, see docs/sync.md
-  "$HOME/.local/share/safetybox/vault.db"
-  "$HOME/.config/safetybox/identity.age"
-  "$HOME/.passage"
-  "$HOME/.ssh"
-  "$HOME/.gnupg"
-)
+#
+# Built in a function, not at file scope, on purpose. Resolving CALIBRE_LIBRARY and
+# FIREFOX_PROFILE can abort when StoragePrime is not mounted or no Firefox profile
+# exists, and that abort is correct for backup: omitting an irreplaceable set
+# silently is the worse outcome. But it must NOT block the read-only subcommands,
+# so snapshots, restore, forget, init, mc-backup and mc-restore never call this and
+# run without the drive. Only backup does.
+resolve_backup_paths() {
+  # The Firefox profile. First existing candidate wins: snap (Ubuntu, Pop), then
+  # Flatpak (Bazzite and others), then the native RPM or deb path. An explicit
+  # FIREFOX_PROFILE skips the probe. Fail loud if nothing is found, rather than
+  # feed restic a phantom path that it would warn about and skip.
+  if [ -z "$FIREFOX_PROFILE" ]; then
+    for _ff_candidate in \
+      "$HOME/snap/firefox/common/.mozilla/firefox" \
+      "$HOME/.var/app/org.mozilla.firefox/.mozilla/firefox" \
+      "$HOME/.mozilla/firefox"; do
+      if [ -d "$_ff_candidate" ]; then
+        FIREFOX_PROFILE="$_ff_candidate"
+        break
+      fi
+    done
+  fi
+  if [ -z "$FIREFOX_PROFILE" ]; then
+    echo "No Firefox profile found at the snap, Flatpak, or native path." >&2
+    echo "Set FIREFOX_PROFILE to its location, or launch Firefox once." >&2
+    exit 1
+  fi
+
+  # The Calibre library mountpoint. drive_mount prints where StoragePrime IS and
+  # returns nonzero when it is not mounted. Under set -e a bare assignment would
+  # abort with no word, so declare first, assign second, and catch the failure to
+  # say why. An explicit CALIBRE_LIBRARY skips the resolver.
+  if [ -z "$CALIBRE_LIBRARY" ]; then
+    local _sp_root
+    _sp_root="$(drive_mount StoragePrime)" || {
+      echo "StoragePrime is not mounted, so the Calibre library cannot be found." >&2
+      echo "Refusing to run a backup that would silently omit it. Mount the drive," >&2
+      echo "or set CALIBRE_LIBRARY to override." >&2
+      exit 1
+    }
+    CALIBRE_LIBRARY="$_sp_root/Books/Calibre Library"
+  fi
+
+  BACKUP_PATHS=(
+    "$HOME/code"                 # all source. the whole point
+    "$HOME/Documents"            # Education, Employment, Vital, obsidian-vaults
+    "$CALIBRE_LIBRARY"           # library + metadata.db
+    "$HOME/forgejo"              # critical infra: stack, repos, DB, runner config
+    "$HOME/sites"                # the *.test project roots
+    "$MC_DIR"                    # worlds + journeymap + the exact mod versions
+    "$FIREFOX_PROFILE"           # extension configs Sync does not carry
+    "$HOME/Desktop"              # safety net. Should be near empty after the reorg
+    "$HOME/Sync"                 # syncthing: SNHU coursework + library, see docs/sync.md
+    # XDG defaults, not hardcoded. safetybox reads $XDG_DATA_HOME and
+    # $XDG_CONFIG_HOME, so a machine that relocates either would drop the two files
+    # every other secret is recovered from. These two are the whole vault.
+    "${XDG_DATA_HOME:-$HOME/.local/share}/safetybox/vault.db"
+    "${XDG_CONFIG_HOME:-$HOME/.config}/safetybox/identity.age"
+    "$HOME/.passage"
+    "$HOME/.ssh"
+    "$HOME/.gnupg"
+  )
+}
 
 # Junk that must never enter a snapshot, even from inside the paths above.
 EXCLUDES=(
@@ -99,17 +183,47 @@ EXCLUDES=(
 # Forgejo. Stopping the stack for the run is the simple, unambiguous fix: nothing
 # is writing, so the files on disk are coherent by definition. This machine is
 # single user, so the downtime costs nothing.
+# podman ships compose two ways. The Python podman-compose script is one binary on
+# PATH. The newer Go `podman compose` is a subcommand of podman itself. Ubuntu
+# tends to package the script, and Fedora and SUSE lean toward the subcommand, so
+# probing only for podman-compose skipped the quiesce on a machine where the stack
+# runs fine through the subcommand. That skip was silent, and the next line tarred
+# a live SQLite database, which is the torn write this whole dance exists to avoid.
+# Print whichever implementation exists, or return 1 with nothing.
+forgejo_compose_impl() {
+  if command -v podman-compose >/dev/null 2>&1; then
+    printf 'podman-compose\n'
+    return 0
+  fi
+  if command -v podman >/dev/null 2>&1 && podman compose version >/dev/null 2>&1; then
+    printf 'podman compose\n'
+    return 0
+  fi
+  return 1
+}
+
 forgejo_stop() {
   [ -d "$HOME/forgejo" ] || return 0
-  command -v podman-compose >/dev/null 2>&1 || return 0
-  (cd "$HOME/forgejo" && podman-compose down >/dev/null 2>&1) && echo "forgejo stack stopped"
+  local compose
+  compose="$(forgejo_compose_impl)" || {
+    echo "The forgejo stack is present but neither podman-compose nor" >&2
+    echo "'podman compose' is available. Refusing to archive a live SQLite" >&2
+    echo "database, which can capture a torn write. Install a compose front end." >&2
+    exit 1
+  }
+  # $compose is "podman-compose" or the two words "podman compose", so it must
+  # word-split. That is the one place unquoted expansion is intended here.
+  # shellcheck disable=SC2086
+  (cd "$HOME/forgejo" && $compose down >/dev/null 2>&1) && echo "forgejo stack stopped"
 }
 
 forgejo_start() {
   [ -d "$HOME/forgejo" ] || return 0
-  command -v podman-compose >/dev/null 2>&1 || return 0
+  local compose
+  compose="$(forgejo_compose_impl)" || return 0
   # direnv exec loads the passage-backed secrets the compose file interpolates.
-  (cd "$HOME/forgejo" && direnv exec . podman-compose up -d >/dev/null 2>&1) && echo "forgejo stack started"
+  # shellcheck disable=SC2086
+  (cd "$HOME/forgejo" && direnv exec . $compose up -d >/dev/null 2>&1) && echo "forgejo stack started"
 }
 
 # Forgejo runs as uid 1000 INSIDE its container, which rootless podman maps to a
@@ -173,11 +287,17 @@ case "${1:-}" in
     sb_restic init
     ;;
   backup)
+    # Resolve the Tier 1 set first. This aborts loudly if StoragePrime is not
+    # mounted or no Firefox profile exists, before anything is stopped, so a
+    # missing library never turns into forgejo left down.
+    resolve_backup_paths
     # Quiesce forgejo so its SQLite database is coherent on disk, archive its
     # subuid-owned data while it is still, and bring it back up no matter how
-    # restic exits.
-    forgejo_stop
+    # restic exits. The trap is armed BEFORE the stop, not after: forgejo_stop can
+    # fail partway, and under set -e that abort used to skip the trap and leave the
+    # stack down with no restart. Arming first means any exit path restarts it.
     trap forgejo_start EXIT
+    forgejo_stop
     forgejo_archive
     sb_restic backup --verbose "${EXCLUDES[@]}" "${BACKUP_PATHS[@]}"
     ;;

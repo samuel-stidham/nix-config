@@ -40,6 +40,10 @@
 
 let
   siteRoot = "${config.home.homeDirectory}/sites";
+  # KEEP IN SYNC with flake.nix's runDir (perSystem). Two independent bindings for
+  # one path in different eval contexts. nginx's fastcgi_pass here and php-fpm's
+  # listen socket in flake.nix both derive from it, so a change on one side must be
+  # mirrored on the other or the php-fpm connection silently breaks.
   runDir = "${config.home.homeDirectory}/.local/share/dev-services";
   certDir = "${runDir}/certs";
   homeDomain = "home.samuelstidham.me";
@@ -226,16 +230,40 @@ let
       }
     }
   '';
+
+  # nginx loads the wildcard cert at startup and refuses to start when the file is
+  # missing. On a fresh box home-certs.sh has not run yet, and nothing orders this
+  # unit after it, so nginx would crash-loop under Restart=on-failure until the
+  # first issuance. Mint a self-signed placeholder for the home domain if the real
+  # cert is absent, so nginx always starts. home-certs.sh later overwrites it with
+  # the real Let's Encrypt cert and reloads. Only the ${homeDomain} pair is named
+  # by STATIC ssl_certificate paths (forgejo, atlantis, the wildcard vhost, the 443
+  # default), so only it aborts startup; the .test vhosts resolve certs per-name.
+  certInit = pkgs.writeShellScript "nginx-cert-init.sh" ''
+    set -eu
+    mkdir -p ${runDir}/nginx/tmp ${certDir}
+    if [ ! -e ${certDir}/${homeDomain}.crt ] || [ ! -e ${certDir}/${homeDomain}.key ]; then
+      ${pkgs.openssl}/bin/openssl req -x509 -newkey rsa:2048 -nodes \
+        -keyout ${certDir}/${homeDomain}.key \
+        -out ${certDir}/${homeDomain}.crt \
+        -days 3650 -subj "/CN=*.${homeDomain}" \
+        -addext "subjectAltName=DNS:*.${homeDomain},DNS:${homeDomain}"
+      chmod 600 ${certDir}/${homeDomain}.key
+    fi
+  '';
 in
 {
   systemd.user.services.nginx = lib.mkIf pkgs.stdenv.isLinux {
     Unit = {
       Description = "nginx: *.test and *.home.samuelstidham.me";
-      After = [ "network.target" ];
+      # No After=network.target: this is a USER unit, and network.target lives in
+      # the system manager, not the user one, so ordering against it is a silent
+      # no-op. nginx binds lazily and Restart=on-failure covers a not-yet-up
+      # address, so no user-level network ordering is needed.
     };
     Service = {
       Type = "simple";
-      ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${runDir}/nginx/tmp ${certDir}";
+      ExecStartPre = "${certInit}";
       ExecStart = "${pkgs.nginx}/bin/nginx -c ${nginxConf} -p ${runDir}/nginx";
       ExecReload = "${pkgs.nginx}/bin/nginx -c ${nginxConf} -p ${runDir}/nginx -s reload";
       Restart = "on-failure";

@@ -1,9 +1,18 @@
 # nix-config
 
-My Nix home-manager configuration. It runs on a non-NixOS Ubuntu machine and is
+My Nix home-manager configuration. It targets a non-NixOS Linux host and is
 scaffolded for a Mac later. Nix owns the development tooling and the local dev
-services. apt keeps the system layer, which is the kernel, Cinnamon, the NVIDIA
-driver, and the core libraries.
+services. The distro's own package manager keeps the system layer, which is the
+kernel, Cinnamon, the NVIDIA driver, and the core libraries.
+
+The machine I run it on is Ubuntu. `bootstrap.sh` also supports Linux Mint and
+Pop!_OS on apt, and the Fedora and openSUSE families including Bazzite. Those
+other bodies were built by reading each distro's package index and resolving the
+names in containers, not by installing on them, so treat them as supported but
+untested. There is no Fedora, openSUSE, or Bazzite machine here to verify on. Base
+Debian is dropped: it removed VirtualBox from its archive, so a base-Debian box
+cannot reproduce this machine. RHEL, CentOS, Rocky, and Alma are dropped too,
+because Red Hat removed btrfs in RHEL 8 and this repo's storage is btrfs end to end.
 
 This is a personal config, not a general template. Paths and the username are
 hardcoded to my machine, so fork and adjust before you use it.
@@ -20,7 +29,8 @@ hardcoded to my machine, so fork and adjust before you use it.
 
 - Nix with the `nix-command` and `flakes` features enabled.
 - A non-NixOS host. This applies as standalone home-manager, not NixOS.
-- apt stays for the system layer.
+- The distro package manager stays for the system layer. That is apt, dnf,
+  rpm-ostree, or zypper by family.
 
 ## Layout
 
@@ -32,8 +42,9 @@ hardcoded to my machine, so fork and adjust before you use it.
 - `parts/php.nix` is the shared PHP 8.5 build, used by the CLI and by php-fpm.
 - `doom/` is the Doom Emacs user config, with evil mode for vim keybindings.
 - `bootstrap.sh` installs Nix and everything Nix does not own, for a fresh
-  machine. It detects the distro family and dispatches, so the same script works
-  on Ubuntu, Fedora, and Bazzite.
+  machine. It detects the distro family and dispatches across the apt (Ubuntu,
+  Mint, Pop), Fedora, and openSUSE families, including Bazzite. Only the apt path
+  on this Ubuntu box is tested here.
 - `scripts/` holds the runbook scripts: `backup.sh` (restic), `reorg.sh`,
   `steam-snapshot.sh` / `steam-restore.sh`, `migrate-passage-to-safetybox.sh`,
   and `keep-awake.sh`.
@@ -111,17 +122,20 @@ the names hardcoded in `/etc/hosts` resolve, so start this stack before expectin
 ### Run a Nix GL app against the NVIDIA driver
 
 ```bash
-nix run --impure .#nixGL -- <app>
+nix run --impure .#legacyPackages.x86_64-linux.nixGL -- <app>
 ```
 
-Most apps do not need this. It is only for a Nix-built GL or Vulkan app.
+Most apps do not need this. It is only for a Nix-built GL or Vulkan app. nixGL
+lives under `legacyPackages`, not `packages`, so `nix flake check` stays clean, at
+the cost of the longer attribute path above.
 
 ## Flake outputs
 
 - `homeConfigurations."samuelstidham@x86_64-linux"` and the `aarch64-darwin`
   variant.
 - `packages.<system>.services` and `packages.<system>.sites`, the two dev stacks.
-- `packages.<system>.nixGL` and `packages.<system>.nixGLNvidia`.
+- `legacyPackages.<system>.nixGL` and `legacyPackages.<system>.nixGLNvidia`, kept
+  out of `packages` so `nix flake check` does not choke on nixGL's impurity.
 
 ## Secrets and scanning
 
@@ -140,6 +154,8 @@ installers.
 
 ## What Nix does not own
 
-The system layer stays on apt. That is the kernel, Cinnamon, the NVIDIA driver,
-and the core libraries. Electron and Chromium apps use their vendor `.deb`, since
-the shipped AppArmor profile makes the sandbox work. Desktop apps use Flatpak.
+The system layer stays on the distro's own package manager. That is apt, dnf,
+rpm-ostree, or zypper by family. It owns the kernel, Cinnamon, the NVIDIA driver,
+and the core libraries. Electron and Chromium apps use each vendor's own repo, a
+`.deb` on apt or an rpm repo on dnf, and Flatpak on an atomic base. Desktop apps
+use Flatpak.
