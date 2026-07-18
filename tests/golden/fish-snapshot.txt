@@ -127,7 +127,6 @@ vd
 wait
 wg
 # ===== EXPORTED VARIABLES =====
-CAML_LD_LIBRARY_PATH '/home/samuelstidham/.opam/default/lib/stublibs' '/home/samu…
 CODE /home/samuelstidham/code
 COMPOSER_ALLOW_XDEBUG 1
 DEFAULT_USER samuelstidham
@@ -148,17 +147,13 @@ INFOPATH '' '/usr/local/texlive/2026/texmf-dist/doc/info'
 LANG en_US.UTF-8
 LS_COLORS '*~=0;38;2;58;60;78:bd=1;38;2;241;250;140;48;2;40;42;54:ca=0…
 MANPAGER 'sh -c 'col -bx | bat -l man -p''
-MANPATH '' '/home/samuelstidham/.nix-profile/share/man' '/usr/local/…
+MANPATH '/home/samuelstidham/.nix-profile/share/man' '' '/usr/local/…
 MANROFFOPT -c
 __NIX_ENV_SOURCED 1
 NIX_HOME /home/samuelstidham/.nix-profile
 NIX_PROFILES '/nix/var/nix/profiles/default /home/samuelstidham/.nix-profile'
 NIX_SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
-OCAMLTOP_INCLUDE_PATH /home/samuelstidham/.opam/default/lib/toplevel
-OCAML_TOPLEVEL_PATH /home/samuelstidham/.opam/default/lib/toplevel
-OPAM_LAST_ENV /home/samuelstidham/.opam/.last-env/env-22532c7008a87a85104f…
-OPAM_SWITCH_PREFIX /home/samuelstidham/.opam/default
-PATH '/home/samuelstidham/.opam/default/bin' '/home/samuelstidham…
+PATH '/home/samuelstidham/.nix-profile/bin' '/home/samuelstidham/…
 PWD /home/samuelstidham/code/samuel-stidham/nix-config
 QT_QPA_PLATFORM xcb
 SAVVY_HOME /home/samuelstidham/.savvy
@@ -177,7 +172,6 @@ XDG_STATE_HOME /home/samuelstidham/.local/state
 ZLS_HOME /home/samuelstidham/zls
 _ZO_FZF_OPTS '--no-sort --keep-right --height=50% --info=inline --layout=…
 # ===== PATH (order is behavior) =====
-/home/samuelstidham/.opam/default/bin
 /home/samuelstidham/.nix-profile/bin
 /home/samuelstidham/.deno/bin
 /home/samuelstidham/.bun/bin
@@ -194,10 +188,6 @@ _ZO_FZF_OPTS '--no-sort --keep-right --height=50% --info=inline --layout=…
 /home/samuelstidham/zls/zig-out/bin
 /usr/bin
 /bin
-/nix/store/HASH-curl-8.21.0-bin/bin
-/nix/store/HASH-getconf-glibc-2.42-67/bin
-/nix/store/HASH-unzip-6.0/bin
-/nix/store/HASH-bubblewrap-0.11.2/bin
 # ===== HAND-WRITTEN FUNCTION BODIES =====
 function add_to_path
     if not contains $argv[1] $PATH
