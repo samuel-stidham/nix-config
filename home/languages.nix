@@ -68,7 +68,6 @@ in
     # are standalone tools independent of the compiler version, so clang-analyzer
     # riding clang 21 while the toolchain is clang 22 is fine.
     valgrind                # dynamic memory/thread analysis, confirmed 3.27.1
-    cppcheck                # standalone static analyzer, confirmed 2.21.1
     clang-analyzer          # scan-build / scan-view driver, confirmed 21.1.8
     include-what-you-use    # header hygiene (iwyu), confirmed 0.26
     flawfinder              # pattern-based C/C++ security scanner, confirmed 2.0.20
