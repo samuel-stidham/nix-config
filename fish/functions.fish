@@ -325,3 +325,42 @@ function ex-submit --description 'Submit the current exercise'
     # Files are optional: the CLI works out what to send from the exercise dir.
     exercism submit $argv
 end
+
+# ----------------------------------------
+# nixGL — run Nix-built GL/Vulkan apps on this non-NixOS host
+# ----------------------------------------
+#
+# This box is Ubuntu, not NixOS, so a Nix-built binary links Nix's libglvnd and
+# cannot see the host's GLX vendor drivers (libGLX_nvidia / libGLX_mesa live in
+# /usr/lib, off the Nix search path). The symptom is "GLX: No GLXFBConfigs
+# returned" and a dead window. nixGL bridges that. The wrapper derivations live
+# in this repo's flake as legacyPackages (flake.nix), kept out of `packages` so
+# `nix flake check` stays pure; running them still needs --impure because nixGL
+# probes the live driver.
+#
+# A function, not an alias, for the gd/foundry reason: it forwards $argv, and a
+# trailing-token alias breaks on empty $argv in fish. The flake is referenced by
+# absolute path so this works from any project dir, not just the nix-config repo.
+#
+# `nixgl` uses the auto-detected default; `nixgl-nvidia` forces the NVIDIA path,
+# needed when the default lands on the wrong GPU on this hybrid NVIDIA+AMD
+# machine. Usage: `nixgl make run`, or `nixgl ./build-clang++/ascii-abyss`.
+function nixgl --description 'Run a command under nixGL (host GPU driver bridge)'
+    if test (count $argv) -eq 0
+        echo "usage: nixgl <command> [args...]" >&2
+        return 1
+    end
+    nix run --impure \
+        "$HOME/Code/samuel-stidham/nix-config#legacyPackages.x86_64-linux.nixGL" \
+        -- $argv
+end
+
+function nixgl-nvidia --description 'Run a command under nixGL, forcing the NVIDIA driver'
+    if test (count $argv) -eq 0
+        echo "usage: nixgl-nvidia <command> [args...]" >&2
+        return 1
+    end
+    nix run --impure \
+        "$HOME/Code/samuel-stidham/nix-config#legacyPackages.x86_64-linux.nixGLNvidia" \
+        -- $argv
+end
