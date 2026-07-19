@@ -1,7 +1,7 @@
 { pkgs, lib, ... }:
 
 # Dev toolchains for every language folder under
-# ~/code/personal-projects/language-specific. Nix owns these and they lead on
+# ~/Code/personal-projects/language-specific. Nix owns these and they lead on
 # PATH. Ubuntu's own gcc and clang stay untouched for the system layer.
 #
 # Attributes confirmed against github:NixOS/nixpkgs/nixos-unstable on 2026-07-04.

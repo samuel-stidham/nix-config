@@ -27,7 +27,7 @@ set -uo pipefail
 # The record of deliberately-uncodified installs. The systemd unit overrides this
 # with the immutable store copy. This default is for a hand run from the checkout,
 # and like bootstrap.sh's FLAKE_DIR it can simply be wrong off the checkout.
-RECORD="${RECORDED_PACKAGES:-$HOME/code/samuel-stidham/nix-config/docs/recorded-packages.txt}"
+RECORD="${RECORDED_PACKAGES:-$HOME/Code/samuel-stidham/nix-config/docs/recorded-packages.txt}"
 NIXBIN="$HOME/.nix-profile/bin"
 MAILTO="${AUDIT_MAILTO:-}"
 QUIET=0

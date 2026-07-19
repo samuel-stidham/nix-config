@@ -64,7 +64,7 @@ the savings.
 
 | Path | Why |
 | --- | --- |
-| `~/code` | All source. 475M. The whole point. |
+| `~/Code` | All source. 475M. The whole point. |
 | `~/Documents` | Education, Employment, Vital, obsidian-vaults. |
 | `~/Calibre Library` | Library and `metadata.db`. Never cloud-sync it, SQLite corrupts. |
 | `~/forgejo` | Critical infra. See the database note below. |

@@ -73,17 +73,17 @@ in
       # is needed and the system /usr/bin/gpg is not a dependency.
       core.hooksPath = "${config.xdg.configHome}/git/hooks";
     };
-    # Directory-tree identity. ~/code is laid out by IDENTITY, each folder named
+    # Directory-tree identity. ~/Code is laid out by IDENTITY, each folder named
     # for its GitHub account:
     #
-    #   ~/code/samuel-stidham/   samuel.stidham@snhu.edu
-    #   ~/code/dqfan2012/        dqfan2012@gmail.com
+    #   ~/Code/samuel-stidham/   samuel.stidham@snhu.edu
+    #   ~/Code/dqfan2012/        dqfan2012@gmail.com
     #
     # Each rule includes a generated identity file (below) by path, mirroring the
     # hand-written layout exactly: [includeIf] -> ~/.config/git/identity-<account>.
     includes = [
-      { condition = "gitdir:~/code/samuel-stidham/"; path = "${config.xdg.configHome}/git/identity-samuel-stidham"; }
-      { condition = "gitdir:~/code/dqfan2012/"; path = "${config.xdg.configHome}/git/identity-dqfan2012"; }
+      { condition = "gitdir:~/Code/samuel-stidham/"; path = "${config.xdg.configHome}/git/identity-samuel-stidham"; }
+      { condition = "gitdir:~/Code/dqfan2012/"; path = "${config.xdg.configHome}/git/identity-dqfan2012"; }
     ];
   };
 

@@ -387,7 +387,7 @@ What does exist: `.agents/index.md`, `.agents/rules.md`, `README.md`,
 `SECRETS.md`, `SCANNING.md`, `PUBLISHING.md`, `SITES.md`, and `docs/`.
 
 `SITES.md` is stale. It says `nix run ~/nix-config#services`. The repo moved to
-`~/code/samuel-stidham/nix-config`.
+`~/Code/samuel-stidham/nix-config`.
 
 ---
 

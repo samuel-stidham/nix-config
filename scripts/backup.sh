@@ -138,7 +138,7 @@ resolve_backup_paths() {
   fi
 
   BACKUP_PATHS=(
-    "$HOME/code"                 # all source. the whole point
+    "$HOME/Code"                 # all source. the whole point
     "$HOME/Documents"            # Education, Employment, Vital, obsidian-vaults
     "$CALIBRE_LIBRARY"           # library + metadata.db
     "$HOME/forgejo"              # critical infra: stack, repos, DB, runner config

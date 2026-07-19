@@ -4,13 +4,18 @@
 #
 # The activation package is a pure function of the flake, so what Nix generates
 # from it is the ground truth of the machine's declarative behavior. This captures
-# three views of it and masks store hashes so a pure rebuild does not read as
+# five views of it and masks store hashes so a pure rebuild does not read as
 # drift:
 #   PACKAGE SET     the closure of home.packages, name and version, sorted. Catches
 #                   any package added, removed, or version-bumped.
 #   SYSTEMD UNITS   every generated user service and timer, verbatim. Catches a
 #                   changed ExecStart, path, or schedule, which is what a unit does.
 #   config.fish     the generated fish entry point, which fixes the sourcing order.
+#   git config      the generated ~/.config/git/config and the per-account identity
+#                   files. Catches a changed commit identity, signing key, gpg
+#                   program, hooks path, or includeIf rule.
+#   ssh config      the generated ~/.ssh/config. Catches a changed host block,
+#                   identity file, or agent setting.
 #
 # This is SLOW, a full nix build, and because the repo carries untracked files
 # (parts/drive-mount.nix, scripts/drive-mount.sh) it builds from a throwaway git
@@ -63,6 +68,15 @@ snapshot() {
   done < <(find "$out/home-files/.config/systemd/user" -maxdepth 1 \( -name '*.service' -o -name '*.timer' \) | sort)
   echo "# ===== GENERATED config.fish ====="
   mask < "$out/home-files/.config/fish/config.fish"
+  echo "# ===== GENERATED git config ====="
+  mask < "$out/home-files/.config/git/config"
+  echo "# ===== GENERATED git identity files ====="
+  while IFS= read -r f; do
+    echo "## $(basename "$f")"
+    mask < "$f"
+  done < <(find "$out/home-files/.config/git" -maxdepth 1 -name 'identity-*' | sort)
+  echo "# ===== GENERATED ssh config ====="
+  mask < "$out/home-files/.ssh/config"
 }
 
 mode="${1:-check}"

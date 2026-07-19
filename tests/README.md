@@ -45,12 +45,14 @@ variables.
 ## The home-manager output check
 
 `hm-output.sh` is the strongest guarantee, because the generated output is a pure
-function of the flake. It builds the activation package and captures three views,
+function of the flake. It builds the activation package and captures five views,
 with store hashes masked. The package set is the `home.packages` closure by name
 and version, which catches any package added, removed, or bumped. The systemd
 units are every generated user service and timer verbatim, which catches a changed
 `ExecStart`, path, or schedule. The generated `config.fish` fixes the sourcing
-order. It is slow, and because the repo carries untracked files it builds from a
+order. The git config and its per-account identity files fix commit identity, GPG
+signing, and the hooks path. The `~/.ssh/config` fixes the host blocks and agent
+behavior. It is slow, and because the repo carries untracked files it builds from a
 throwaway git worktree copy, so it is opt-in through `run.sh --full` rather than
 part of the default run.
 

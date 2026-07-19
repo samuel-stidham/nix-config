@@ -31,16 +31,16 @@ set -x EDITOR nvim
 set -x VEDITOR code
 set -x COMPOSER_ALLOW_XDEBUG 1
 
-# Was "$HOME/Code", which has not existed since a375a03 laid the tree out by
-# identity. `ls ~/Code` -> No such file or directory. It pointed at nothing and
-# said nothing, because a shell variable holding a bad path costs nothing until
-# someone uses it. It hid on darwin, where APFS is case insensitive and ~/Code
-# resolves to ~/code anyway, so only Linux ever saw it. Unverified on darwin, no
-# such machine available.
+# The tree root, ~/Code, matching the MacBook whose projects live in ~/Code. The
+# casing flip-flopped. a375a03 moved it to ~/code because the old ~/Code pointed
+# at nothing on Linux. But the MacBook kept ~/Code, so the two boxes disagreed.
+# Standardizing on ~/Code settles it, and the Linux folder was renamed to match.
+# On darwin APFS is case insensitive, so ~/Code and ~/code are one inode there
+# anyway. Unverified on darwin, no such machine available.
 #
 # This is the tree ROOT. The identity level below it (dqfan2012, samuel-stidham,
 # sandbox) is per repo and deliberately not encoded here.
-set -x CODE "$HOME/code"
+set -x CODE "$HOME/Code"
 
 # XDG defaults, as FALLBACKS only. These used to be asserted unconditionally,
 # which overrode a session that had deliberately set something else. They only
@@ -134,7 +134,7 @@ set -x GOPATH "$HOME/go"
 # REMOVED: `set -x GOPROJECTS "$CODE/go-projects"`
 #
 # It inherited the broken $CODE above and pointed at nothing. `go-projects` does
-# not exist anywhere under ~/code or ~/go, and a375a03 records why: the old tree
+# not exist anywhere under ~/Code or ~/go, and a375a03 records why: the old tree
 # organized by LANGUAGE, 20 of 25 language folders were empty, and the taxonomy
 # was replaced by identity. A per-language Go folder has no slot in the new
 # layout, so there is no honest value to give this variable.

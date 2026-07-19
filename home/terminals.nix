@@ -3,7 +3,7 @@
 let
   # Where this repo lives. One binding, so moving the checkout is one edit here
   # rather than a hunt through every module. Referenced by the zellij layout below.
-  flakeRef = "${config.home.homeDirectory}/code/samuel-stidham/nix-config";
+  flakeRef = "${config.home.homeDirectory}/Code/samuel-stidham/nix-config";
 in
 
 # Terminals, themed Catppuccin Frappe and set to a Nerd Font. Ghostty and
@@ -66,7 +66,7 @@ in
                 pane split_direction="horizontal" {
                     // The flake ref is built from homeDirectory and flakeDir,
                     // not hardcoded. This pointed at ~/nix-config and broke the
-                    // moment the repo moved under ~/code/samuel-stidham.
+                    // moment the repo moved under ~/Code/samuel-stidham.
                     pane command="nix" close_on_exit=false {
                         args "run" "${flakeRef}#services"
                     }

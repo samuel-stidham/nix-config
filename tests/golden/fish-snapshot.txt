@@ -127,7 +127,7 @@ vd
 wait
 wg
 # ===== EXPORTED VARIABLES =====
-CODE /home/samuelstidham/code
+CODE /home/samuelstidham/Code
 COMPOSER_ALLOW_XDEBUG 1
 DEFAULT_USER samuelstidham
 DOTNET_CLI_TELEMETRY_OPTOUT 1
@@ -154,7 +154,7 @@ NIX_HOME /home/samuelstidham/.nix-profile
 NIX_PROFILES '/nix/var/nix/profiles/default /home/samuelstidham/.nix-profile'
 NIX_SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
 PATH '/home/samuelstidham/.nix-profile/bin' '/home/samuelstidham/…
-PWD /home/samuelstidham/code/samuel-stidham/nix-config
+PWD /home/samuelstidham/Code/samuel-stidham/nix-config
 QT_QPA_PLATFORM xcb
 SAVVY_HOME /home/samuelstidham/.savvy
 SHLVL

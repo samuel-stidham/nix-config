@@ -35,7 +35,7 @@
 #   ./bootstrap.sh nix        # run one section, by name
 set -euo pipefail
 
-FLAKE_DIR="${FLAKE_DIR:-$HOME/code/samuel-stidham/nix-config}"
+FLAKE_DIR="${FLAKE_DIR:-$HOME/Code/samuel-stidham/nix-config}"
 # Arch from uname -m, not hardcoded. The flake declares x86_64-linux (and darwin),
 # so on x86_64 this resolves to the real config. An aarch64-linux box would ask for
 # samuelstidham@aarch64-linux, not declared yet, and home-manager fails with a

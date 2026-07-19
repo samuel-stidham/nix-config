@@ -420,3 +420,46 @@ status is-interactive; and begin
     end
 
 end
+# ===== GENERATED git config =====
+[commit]
+	gpgsign = true
+
+[core]
+	hooksPath = "/home/samuelstidham/.config/git/hooks"
+
+[gpg]
+	format = "openpgp"
+
+[gpg "openpgp"]
+	program = "/nix/store/HASH-gnupg-2.4.9/bin/gpg"
+
+[init]
+	defaultBranch = "main"
+
+[tag]
+	gpgsign = true
+
+[user]
+	email = "samuel.stidham@snhu.edu"
+	name = "Samuel Stidham"
+	signingkey = "693484A30BCFADFA"
+
+[includeIf "gitdir:~/Code/samuel-stidham/"]
+	path = "/home/samuelstidham/.config/git/identity-samuel-stidham"
+
+[includeIf "gitdir:~/Code/dqfan2012/"]
+	path = "/home/samuelstidham/.config/git/identity-dqfan2012"
+# ===== GENERATED git identity files =====
+## identity-dqfan2012
+[user]
+  email = dqfan2012@gmail.com
+  signingkey = 693484A30BCFADFA
+## identity-samuel-stidham
+[user]
+  email = samuel.stidham@snhu.edu
+  signingkey = 693484A30BCFADFA
+# ===== GENERATED ssh config =====
+Host github.com
+  AddKeysToAgent yes
+  HostName github.com
+  User git
