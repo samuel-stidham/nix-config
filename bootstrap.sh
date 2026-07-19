@@ -1256,6 +1256,35 @@ monogame() {
   echo "Set MGFXC_WINE_PATH to the Nix wine in ~/fish for the shader compiler."
 }
 
+godot_tooling() {
+  log "Godot tooling (GodotEnv + Chickensoft templates)"
+  # Not Nix packages. Chickensoft ships only through NuGet: a global dotnet
+  # tool (GodotEnv) plus two dotnet templates. None are in nixpkgs, so they
+  # install through the Nix dotnet SDK, exactly as MonoGame does above.
+  #
+  # Godot itself is deliberately NOT a Nix package. GodotEnv is the version
+  # manager. fish/env.fish already sets $GODOT to
+  # ~/.config/godotenv/godot/bin/godot, the path GodotEnv installs a build into.
+  # So the engine is whatever `godotenv godot install` put there, not a store
+  # path. The wiring existed already. Installing GodotEnv was the missing half.
+  #
+  # Distro-agnostic by construction. The SDK is from Nix and every command here
+  # hits NuGet, so it runs the same on debian, fedora, and suse. Only
+  # ~/.dotnet/tools and ~/.config/godotenv are written, both under $HOME.
+  #
+  # `|| true` keeps a re-run green. Under set -euo pipefail a second run would
+  # otherwise abort here. Both `dotnet tool install --global` and `dotnet new
+  # install` exit non-zero when the tool or template already exists.
+  dotnet tool install --global Chickensoft.GodotEnv || true
+  dotnet new install Chickensoft.GodotGame || true
+  dotnet new install Chickensoft.GodotPackage || true
+  # LogicBlocks is intentionally not here. It is a per-project library added
+  # with `dotnet add package Chickensoft.LogicBlocks` inside a game's .csproj,
+  # not a machine tool. The Chickensoft.GodotGame template already references it
+  # in every project it scaffolds, which is the correct layer for it.
+  echo "Install a Godot build with: godotenv godot install <version>"
+}
+
 savvy() {
   log "savvy"
   # No Nix package. Reinstall from its own script if you use it.
@@ -2111,6 +2140,7 @@ all() {
   doom_emacs
   lazyvim
   monogame
+  godot_tooling
   savvy
   claude_code
   aws_cli
