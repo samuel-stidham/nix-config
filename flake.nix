@@ -13,6 +13,14 @@
     # naming one distro invited a per-distro branch that must not exist here.
     # Exposed as a runnable output, run with --impure.
     nixgl.url = "github:nix-community/nixGL";
+    # nixGL builds its NVIDIA userspace driver from THIS nixpkgs, pinned to a
+    # release branch on purpose. nixGL calls nvidia_x11 with the older `kernel`
+    # override argument, which nixpkgs-unstable has since dropped — building
+    # nixGLNvidia against unstable fails with "unexpected argument 'kernel'". A
+    # stable branch keeps the compatible API. This input ONLY builds the nixGL
+    # driver libs; the rest of the system stays on unstable. Not `.follows`
+    # nixpkgs for exactly that reason.
+    nixpkgs-nvidia.url = "github:NixOS/nixpkgs/nixos-25.11";
     # Catppuccin theming, Frappe flavor.
     catppuccin.url = "github:catppuccin/nix";
     # Local dev services (databases, cache, search, S3) as a process-compose
@@ -21,7 +29,7 @@
     services-flake.url = "github:juspay/services-flake";
   };
 
-  outputs = inputs@{ self, nixpkgs, flake-parts, home-manager, nixgl, catppuccin, ... }:
+  outputs = inputs@{ self, nixpkgs, nixpkgs-nvidia, flake-parts, home-manager, nixgl, catppuccin, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" "aarch64-darwin" ];
       imports = [ inputs.process-compose-flake.flakeModule ];
@@ -35,6 +43,10 @@
               inherit system;
               config.allowUnfree = true;
             };
+            # `self` + `system` let home modules reach the flake's own outputs
+            # (home/graphics.nix installs self.legacyPackages.${system}.nixGLNvidia,
+            # so the pinned wrapper is defined once, above).
+            extraSpecialArgs = { inherit self system; };
             modules = [
               ./home/home.nix
               catppuccin.homeModules.catppuccin
@@ -139,7 +151,24 @@
         # which is impure by nature. The attribute path is longer as a result:
         #   nix run --impure .#legacyPackages.x86_64-linux.nixGL -- <app>
         legacyPackages.nixGL = nixgl.packages.${system}.nixGLDefault;
-        legacyPackages.nixGLNvidia = nixgl.packages.${system}.nixGLNvidia;
+        # nixGLNvidia with the driver version pinned. nixGL's auto-detection
+        # cannot parse the "Open Kernel Module for x86_64  <ver>" version string
+        # (its regex, nixGL.nix:237, expects the classic "Kernel Module  <ver>"
+        # form), so version must be supplied. Pinning version + hash also makes
+        # this PURE: no --impure to build or run, unlike the auto path, so it can
+        # go on PATH via home.packages. On a driver bump, run
+        # `scripts/nixgl-nvidia-refresh` for the new version + hash.
+        legacyPackages.nixGLNvidia = (import "${nixgl}/default.nix" {
+          # Built from nixpkgs-nvidia (a stable branch), NOT the unstable `pkgs`
+          # above — see the nixpkgs-nvidia input comment for why (the `kernel`
+          # override arg). This only affects the driver libs nixGL injects.
+          pkgs = import nixpkgs-nvidia {
+            inherit system;
+            config.allowUnfree = true;
+          };
+          nvidiaVersion = "580.159.03";
+          nvidiaHash = "sha256-MshdmbD2QMlQH2GzndrSCP0CiNAVxPvF/QQ1wHeD+nc=";
+        }).nixGLNvidia;
 
         # Web layer for ~/sites/<name>. php-fpm and the .test resolver. Run with
         # `nix run .#sites`. The one-time system config is in SITES.md under

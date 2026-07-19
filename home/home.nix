@@ -12,6 +12,7 @@
     ./jdks.nix
     ./cli.nix
     ./apps.nix
+    ./graphics.nix
     ./emacs.nix
     ./theme.nix
     ./fonts.nix
