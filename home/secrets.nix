@@ -53,75 +53,67 @@ in
     '';
   };
 
-  # Git config, managed by home-manager. This mirrors the current ~/.gitconfig,
-  # including the nix-config snhu override that already exists, and adds the
-  # global hooks path. trufflehog is not wired as a hook, since it is the deep
-  # pre-publish auditor, not a per-commit tool. It is global as an installed
-  # command for on-demand scans in any repo. See ../SCANNING.md.
+  # Git config, managed by home-manager. Global identity is the snhu portfolio
+  # account now, and each account tree overrides email and signing key through a
+  # generated identity file under ~/.config/git. The global hooks path stays, so
+  # the gitleaks pre-commit guard runs in every repo. See ../SCANNING.md.
   programs.git = {
     enable = true;
-    # New home-manager schema. user, commit, init, and core all live under
-    # settings now. Signing is GPG key 693484A30BCFADFA with sign by default,
-    # kept as is so nothing regresses. Whether to move to SSH signing per
-    # identity is a decision for the ssh-git-identity phase, see ../SECRETS.md.
     settings = {
       user = {
         name = "Samuel Stidham";
-        email = "dqfan2012@gmail.com";
+        email = "samuel.stidham@snhu.edu";
         signingkey = "693484A30BCFADFA";
       };
       commit.gpgsign = true;
+      tag.gpgsign = true;
       init.defaultBranch = "main";
+      # Signing uses the nix gnupg. home-manager sets gpg.format = openpgp and
+      # gpg.openpgp.program to its own gnupg by default, so no gpg.program line
+      # is needed and the system /usr/bin/gpg is not a dependency.
       core.hooksPath = "${config.xdg.configHome}/git/hooks";
     };
-    # Directory-tree identity. ~/code is laid out by IDENTITY, not by language and
-    # not by host, and each folder is named for its GitHub account:
+    # Directory-tree identity. ~/code is laid out by IDENTITY, each folder named
+    # for its GitHub account:
     #
-    #   ~/code/samuel-stidham/   samuel.stidham@snhu.edu, the portfolio identity
-    #   ~/code/dqfan2012/        dqfan2012@gmail.com, legacy and shrinking
-    #   ~/code/sandbox/          throwaway, no identity rule
+    #   ~/code/samuel-stidham/   samuel.stidham@snhu.edu
+    #   ~/code/dqfan2012/        dqfan2012@gmail.com
     #
-    # A repo is therefore correct by LOCATION, and nothing needs a per-repo
-    # override. That is the whole point. A `git config --local user.email` is
-    # untracked and invisible, so it is right on this machine and silently absent
-    # on a fresh clone. infra-backups had exactly that and would have committed as
-    # the wrong person on the MacBook.
-    #
-    # ONE rule per identity. This was two, because ~/nix-config sat outside ~/code
-    # and needed a line of its own. It lives under ~/code/samuel-stidham now, so
-    # the exception is gone rather than maintained.
-    #
-    # dqfan2012 gets no rule: it is still the global default above. When that
-    # identity is fully retired, the default flips and this list stays one line.
-    #
-    # contents rather than path means home-manager generates the included file, so
-    # no hand-written ~/.gitconfig-snhu exists and the identity is declarative.
+    # Each rule includes a generated identity file (below) by path, mirroring the
+    # hand-written layout exactly: [includeIf] -> ~/.config/git/identity-<account>.
     includes = [
-      { condition = "gitdir:~/code/samuel-stidham/"; contents.user.email = "samuel.stidham@snhu.edu"; }
+      { condition = "gitdir:~/code/samuel-stidham/"; path = "${config.xdg.configHome}/git/identity-samuel-stidham"; }
+      { condition = "gitdir:~/code/dqfan2012/"; path = "${config.xdg.configHome}/git/identity-dqfan2012"; }
     ];
   };
 
-  # SSH host aliases, managed. github.com uses the personal key, github.com-snhu
-  # uses the snhu key. IdentitiesOnly makes each host offer only its own key, so
-  # they never cross. The config is managed here, the private keys never are.
+  # The per-identity include files, generated so nothing is hand-written. Each
+  # carries only the email and signing key for its account tree.
+  xdg.configFile."git/identity-samuel-stidham".text = ''
+    [user]
+      email = samuel.stidham@snhu.edu
+      signingkey = 693484A30BCFADFA
+  '';
+  xdg.configFile."git/identity-dqfan2012".text = ''
+    [user]
+      email = dqfan2012@gmail.com
+      signingkey = 693484A30BCFADFA
+  '';
+
+  # SSH host config, managed here. One github.com block, and AddKeysToAgent so a
+  # key is loaded into the agent on first use, the Linux stand-in for the mac
+  # Keychain (there is no UseKeychain on Linux). The private keys are never in
+  # any repo.
   programs.ssh = {
     enable = true;
     # We declare exactly the hosts we need, so no implicit Host * defaults.
     enableDefaultConfig = false;
-    # settings replaces the deprecated matchBlocks. Keys are Host patterns, and
-    # the values use raw ssh_config directive names.
+    # settings keys are Host patterns, values use raw ssh_config directive names.
     settings = {
       "github.com" = {
         HostName = "github.com";
         User = "git";
-        IdentityFile = "~/.ssh/id_ed25519_github_personal";
-        IdentitiesOnly = true;
-      };
-      "github.com-snhu" = {
-        HostName = "github.com";
-        User = "git";
-        IdentityFile = "~/.ssh/id_ed25519_snhu";
-        IdentitiesOnly = true;
+        AddKeysToAgent = "yes";
       };
     };
   };
