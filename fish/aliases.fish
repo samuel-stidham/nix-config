@@ -81,6 +81,20 @@ alias wg 'wget -c '
 # alias mailhog "$HOME/go/bin/MailHog"
 
 # =========================
+# Project directory jumps
+# =========================
+
+# `pysci` is really the activate command for the python environment, not just a
+# cd. That project has an .envrc that runs `use devenv`. direnv activates the
+# venv on arrival and tears it down when you leave, so there is no deactivate
+# verb to type. That only works if the cd happens in THIS shell, which is why
+# this is an alias rather than a script.
+#
+# Not zoxide. `z pysci` needs the directory visited first and ranks by frecency,
+# so it can land somewhere else entirely. This name resolves to one path, always.
+alias pysci 'cd $HOME/Code/samuel-stidham/pysci-ai'
+
+# =========================
 # grep and dir shortcuts, NOTHING shadowed
 # =========================
 #
