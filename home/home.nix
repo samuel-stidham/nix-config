@@ -10,6 +10,7 @@
     ./python.nix
     ./fish.nix
     ./jdks.nix
+    ./jupyter-kernels.nix
     ./cli.nix
     ./apps.nix
     ./graphics.nix
