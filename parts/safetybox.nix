@@ -9,7 +9,7 @@
 # and the vendorHash comes from the build error when it is wrong.
 pkgs:
 let
-  version = "1.2.0";
+  version = "3.0.0";
 in
 pkgs.buildGoModule {
   pname = "safetybox";
@@ -19,14 +19,14 @@ pkgs.buildGoModule {
     owner = "samuel-stidham";
     repo = "safetybox";
     rev = "v${version}";
-    hash = "sha256-7AQOhFW3/ScXKQPeaamzkGG1HLos2gy0/a1a2BKNP5U=";
+    hash = "sha256-+xCYjURJD1m2XiZLonBVDhZ/rOIgq1N53j36rQ9JSZI=";
   };
 
-  vendorHash = "sha256-QeXliOmxYQAqcsnTwGh9et0tWVC2WtqvU2wAqo3u+6E=";
+  vendorHash = "sha256-KAmX5L3Xt/8glA4i4w+TAYINerJsrDl2TK+aUEPDslQ=";
 
   # Match the goreleaser build. CGO is off (memguard, modernc sqlite, and age are
   # all pure Go), and the version is stamped into main.version with the leading v
-  # that goreleaser uses, so `safetybox --version` reports v1.2.0, not dev.
+  # that goreleaser uses, so `safetybox --version` reports v3.0.0, not dev.
   env.CGO_ENABLED = "0";
   ldflags = [ "-s" "-w" "-X main.version=v${version}" ];
 
