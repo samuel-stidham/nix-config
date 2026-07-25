@@ -11,7 +11,7 @@
 # `nix flake check`. We install it here rather than redefining it, so the driver
 # version lives in exactly one place.
 #
-# The upstream binary is version-suffixed (nixGLNvidia-580.159.03); we re-expose
+# The upstream binary is version-suffixed (nixGLNvidia-580.173.02); we re-expose
 # it under the stable name `nixGLNvidia` so Makefiles/scripts don't hardcode the
 # version and don't break on a driver bump.
 #

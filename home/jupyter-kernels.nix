@@ -29,14 +29,15 @@ let
   #   error: flake 'flake:nixpkgs' does not provide attribute ...
   # So the release jar is fetched and pinned by hash instead.
   #
-  # Pinned at 3.0.2 because that is the version already proven working here,
-  # installed 2026-03-11. Upstream has since shipped 3.0.4. Bumping is a
-  # separate change with its own hash, not a drive-by.
-  rjkVersion = "3.0.2";
+  # Was pinned at 3.0.2, the version hand-installed here on 2026-03-11 and
+  # carried over when this module was written. 3.0.4 is upstream's latest,
+  # released 2026-06-15. The bump is deliberate rather than a drive-by, which is
+  # what the previous comment here was holding out for.
+  rjkVersion = "3.0.4";
 
   rjkJar = pkgs.fetchurl {
     url = "https://github.com/padreati/rapaio-jupyter-kernel/releases/download/${rjkVersion}/rapaio-jupyter-kernel-${rjkVersion}.jar";
-    hash = "sha256-xi/pUWMBcTi348j6occZpD66G+Tks3gznOKyUR8KLz0=";
+    hash = "sha256-eKmOvgxS6+ZcCzFvIHJABJeHAJqtJniLS5JhyNcgDO8=";
   };
 
   # PINNED JDK, not a bare `java`. The installer-written kernelspec had
@@ -47,8 +48,16 @@ let
   # store path removes the question.
   #
   # temurin-21 is the default in jdks.nix and it is enough. Verified 2026-07-23
-  # by running the jar under temurin 21, 25, and 26: none threw
+  # against the 3.0.2 jar by running it under temurin 21, 25, and 26: none threw
   # UnsupportedClassVersionError, so the jar's class files predate 22.
+  #
+  # A version bump can raise the class file target, so 3.0.4 was re-checked on
+  # 2026-07-24. Under temurin 21.0.11 it reached its own argument parsing:
+  #   Exception in thread "main" java.lang.IllegalArgumentException:
+  #     Kernel should have at least one argument.
+  #     at org.rapaio.jupyter.kernel.MainApp.main(MainApp.java:28)
+  # Reaching MainApp.main means the class files loaded. Only temurin 21 was
+  # re-run, because 21 is what this kernelspec actually names.
   rjkJdk = pkgs.temurin-bin-21;
 
   # The env block is upstream's own defaults, written by `-i -auto`. It is

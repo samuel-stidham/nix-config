@@ -158,6 +158,25 @@
         # this PURE: no --impure to build or run, unlike the auto path, so it can
         # go on PATH via home.packages. On a driver bump, run
         # `scripts/nixgl-nvidia-refresh` for the new version + hash.
+        #
+        # THE PIN GOES STALE BY ITSELF, AND QUIETLY. A routine `apt upgrade` on
+        # 2026-07-23 moved the host driver from 580.159.03 to 580.173.02 and
+        # nothing here changed. NVIDIA userspace must match the running kernel
+        # module exactly, so GL context creation failed:
+        #
+        #   $ nixGLNvidia nvidia-smi
+        #   Failed to initialize NVML: Driver/library version mismatch
+        #   NVML library version: 580.159
+        #   $ nixGLNvidia glxinfo -B
+        #   X Error of failed request:  BadValue
+        #     Minor opcode of failed request:  24 (X_GLXCreateNewContext)
+        #
+        # The host itself was never broken. Unwrapped `glxinfo -B` reported
+        # 4.6.0 NVIDIA 580.173.02 the whole time, so nothing on the desktop
+        # misbehaved and only nix-built GL apps failed. That asymmetry is why it
+        # sat unnoticed for a day. Re-check this pin against
+        # `nvidia-smi --query-gpu=driver_version` after any apt run that touches
+        # libnvidia-*, and treat it as mandatory after a release upgrade.
         legacyPackages.nixGLNvidia = (import "${nixgl}/default.nix" {
           # Built from nixpkgs-nvidia (a stable branch), NOT the unstable `pkgs`
           # above — see the nixpkgs-nvidia input comment for why (the `kernel`
@@ -166,8 +185,8 @@
             inherit system;
             config.allowUnfree = true;
           };
-          nvidiaVersion = "580.159.03";
-          nvidiaHash = "sha256-MshdmbD2QMlQH2GzndrSCP0CiNAVxPvF/QQ1wHeD+nc=";
+          nvidiaVersion = "580.173.02";
+          nvidiaHash = "sha256-jY65AB4FqaimY9PV0wT+tk7yhE7hhczf2VJ4aCD0bhs=";
         }).nixGLNvidia;
 
         # Web layer for ~/sites/<name>. php-fpm and the .test resolver. Run with
