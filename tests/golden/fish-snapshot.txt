@@ -47,6 +47,7 @@ fish_commandline_append
 fish_commandline_prepend
 fish_command_not_found
 fish_config
+fish_darcs_prompt
 fish_default_key_bindings
 fish_default_mode_prompt
 fish_delta
@@ -94,6 +95,8 @@ man
 N_
 nextd
 nextd-or-forward-token
+nixgl
+nixgl-nvidia
 nugetclean
 open
 p3
@@ -107,6 +110,7 @@ psmem
 psmem10
 psub
 pushd
+pysci
 quit
 realpath
 rmpkg
@@ -439,6 +443,26 @@ function ipc --wraps='ip -color=auto' --description 'alias ipc ip -color=auto'
     ip -color=auto $argv
 end
 
+function nixgl --description 'Run a command under nixGL (host GPU driver bridge)'
+    if test (count $argv) -eq 0
+        echo "usage: nixgl <command> [args...]" >&2
+        return 1
+    end
+    nix run --impure \
+        "$HOME/Code/samuel-stidham/nix-config#legacyPackages.x86_64-linux.nixGL" \
+        -- $argv
+end
+
+function nixgl-nvidia --description 'Run a command under nixGL, forcing the NVIDIA driver'
+    if test (count $argv) -eq 0
+        echo "usage: nixgl-nvidia <command> [args...]" >&2
+        return 1
+    end
+    nix run --impure \
+        "$HOME/Code/samuel-stidham/nix-config#legacyPackages.x86_64-linux.nixGLNvidia" \
+        -- $argv
+end
+
 function nugetclean --wraps='dotnet nuget locals --clear all' --description 'alias nugetclean dotnet nuget locals --clear all'
     dotnet nuget locals --clear all $argv
 end
@@ -465,6 +489,10 @@ end
 
 function psmem10 --wraps='ps auxf | sort -nr -k 4 | head -10' --description 'alias psmem10 ps auxf | sort -nr -k 4 | head -10'
     ps auxf | sort -nr -k 4 | head -10 $argv
+end
+
+function pysci --wraps='cd $HOME/Code/samuel-stidham/pysci-ai' --description 'alias pysci cd $HOME/Code/samuel-stidham/pysci-ai'
+    cd $HOME/Code/samuel-stidham/pysci-ai $argv
 end
 
 function quit --wraps=exit --description 'alias quit exit'

@@ -33,24 +33,11 @@ ATTR='.#homeConfigurations."samuelstidham@x86_64-linux".activationPackage'
 
 mask() { sed -E 's#/nix/store/[a-z0-9]{32}-#/nix/store/HASH-#g'; }
 
-# Build from a copy that stages the working tree, so untracked files are visible
-# to the flake. The built path lands in /nix/store and outlives the copy.
-build_out() {
-  local tmp out err
-  tmp="$(mktemp -d)"
-  err="$tmp/build.err"
-  cp -a "$REPO"/. "$tmp"/
-  ( cd "$tmp" && git add -A ) >/dev/null 2>&1
-  out="$( cd "$tmp" && nix build "$ATTR" --no-link --print-out-paths 2>"$err" | head -1 )"
-  # Surface the Nix error on failure instead of swallowing it. The old 2>/dev/null
-  # left a failed build reporting only "produced no path" with no cause.
-  if [ -z "$out" ]; then
-    echo "hm-output: nix build failed, stderr follows:" >&2
-    cat "$err" >&2
-  fi
-  rm -rf "$tmp"
-  printf '%s' "$out"
-}
+# build_out builds from a copy that stages the working tree, so untracked files
+# are visible to the flake. The built path lands in /nix/store and outlives the
+# copy. It moved to lib-build.sh when git-identity.sh needed the same build.
+# shellcheck source=lib-build.sh
+. "$HERE/lib-build.sh"
 
 snapshot() {
   local out

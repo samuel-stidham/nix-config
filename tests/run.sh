@@ -12,7 +12,15 @@
 #   The home-manager generated output (config.fish, hm-session-vars, systemd
 #   units) needs a full `nix build`, which is slow and, until the new files are
 #   git tracked, needs a worktree copy. That check lives in hm-output.sh and is
-#   run on request, not here.
+#   run on request, not here. git-identity.sh builds too, for the same reason,
+#   and rides along under the same flag.
+#
+# The two --full checks answer different questions and neither replaces the
+# other. hm-output.sh asks "did the generated output move", which is a golden
+# and blesses whatever it was captured on. git-identity.sh asks "is the identity
+# still chosen by the directory", which is an assertion and fails on the commit
+# that breaks it. A golden already held the ssh config when the key selection
+# was dropped from it, and it recorded the loss as expected output.
 #
 # Capture the fish golden first on a known-good tree:
 #   tests/fish-snapshot.sh capture
@@ -40,6 +48,7 @@ run "fish snapshot"              "$HERE/fish-snapshot.sh" check
 case "${1:-}" in
   --full|--with-nix)
     run "home-manager output (builds Nix)" "$HERE/hm-output.sh" check
+    run "git identity by tree (builds Nix)" "$HERE/git-identity.sh"
     ;;
   "") ;;   # no flag: fast checks only, the default
   # A typo'd flag must not silently skip the Nix gate and still print ALL PASSED.

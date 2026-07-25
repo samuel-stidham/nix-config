@@ -13,7 +13,7 @@ you meant, which you approve and recapture, or a regression, which you fix.
 
 ```
 tests/run.sh            # fast checks: detect + fish snapshot
-tests/run.sh --full     # also the home-manager output check, which builds Nix
+tests/run.sh --full     # also the two checks that build Nix
 ```
 
 Run it before a change and after, and compare. If you are starting fresh, or you
@@ -41,6 +41,33 @@ calling shell cannot leak in, never sources `secrets.fish`, and masks Nix store
 hashes so a pure rebuild does not read as drift. The golden lives at
 `golden/fish-snapshot.txt` and is specific to this machine and its fish universal
 variables.
+
+## Where a golden is not enough
+
+A golden records what the config does today. It cannot record what the config is
+supposed to do, and the difference is not academic. `hm-output.sh` already
+captured `~/.ssh/config` and both git identity files when the ssh key selection
+was dropped out of them. The golden was recaptured on that tree, the missing
+`IdentityFile` became the expected output, and pushes from `~/Code/samuel-stidham`
+authenticated as the other account for a day.
+
+So anything that is a rule rather than an observation belongs in an assertion
+instead. `git-identity.sh` is the first of those. It builds the activation
+package, creates a throwaway repo inside each account tree, and asks real git
+what it resolved there. It asserts the email, the ssh key, `IdentitiesOnly=yes`,
+that the key file exists, that no two accounts share a key, and that the shared
+`github.com` ssh block names no `IdentityFile`. It also fails on a tree under
+`~/Code` that has neither an identity rule nor a line saying it needs none,
+because a tree nobody claimed takes the global identity in silence.
+
+It resolves through git rather than reading the generated files and matching
+strings. `gitdir` patterns are git's to interpret, and a test that reimplements
+them passes while git disagrees.
+
+Proven both ways on 2026-07-24. Against the fixed tree every case passes. With
+the two `core.sshCommand` lines removed from `home/secrets.nix`, it prints
+`FAIL  samuel-stidham ssh key  no core.sshCommand, ssh will pick by agent order`
+and exits 1.
 
 ## The home-manager output check
 
