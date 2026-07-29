@@ -264,4 +264,20 @@ if ! pdbedit -L -s "$conf" 2>/dev/null | grep -q "^$user:"; then
   exit 1
 fi
 
-exec smbd --foreground --no-process-group --configfile "$conf"
+# --log-basename duplicates `log file` in the conf, and is not redundant.
+#
+# smbd's debug subsystem initialises against its COMPILED-IN default before it
+# has parsed smb.conf, so a rootless smbd complains once on every single start
+# about a path it was never going to use:
+#
+#   reopen_one_log: Unable to open new log file '/var/log/samba/log.smbd':
+#   No such file or directory
+#
+# Logging was never actually broken. ~/.local/share/samba/log/smbd.log was
+# written correctly the whole time, which is what makes the message worth
+# silencing rather than chasing: a real error on every start teaches the reader
+# to ignore errors on start. The flag is read before config parsing, so it fixes
+# the one window `log file` cannot reach.
+exec smbd --foreground --no-process-group \
+  --log-basename "$stateDir/log" \
+  --configfile "$conf"
