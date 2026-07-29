@@ -23,6 +23,7 @@
     ./flameshot.nix
     ./editors.nix
     ./syncthing.nix
+    ./samba.nix
     ./home-certs.nix
     ./web.nix
   ];

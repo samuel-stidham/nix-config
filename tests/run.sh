@@ -49,6 +49,7 @@ case "${1:-}" in
   --full|--with-nix)
     run "home-manager output (builds Nix)" "$HERE/hm-output.sh" check
     run "git identity by tree (builds Nix)" "$HERE/git-identity.sh"
+    run "samba time machine (builds Nix)" "$HERE/samba-timemachine.sh"
     ;;
   "") ;;   # no flag: fast checks only, the default
   # A typo'd flag must not silently skip the Nix gate and still print ALL PASSED.

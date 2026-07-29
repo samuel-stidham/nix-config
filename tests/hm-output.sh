@@ -47,7 +47,28 @@ snapshot() {
     return 1
   fi
   echo "# ===== PACKAGE SET (home.packages closure) ====="
-  nix-store -q --references "$out/home-path" | sed -E 's#/nix/store/[a-z0-9]{32}-##' | sort
+  # readlink -f is load bearing and its absence was a silent hole for as long as
+  # this file has existed.
+  #
+  # $out/home-path is a SYMLINK to a separate store path:
+  #
+  #   home-path -> /nix/store/HASH-home-manager-path
+  #
+  # nix-store -q --references resolves an argument to the store path CONTAINING
+  # it, not through it. Given the symlink it therefore answered about
+  # home-manager-generation rather than home-manager-path, and the section
+  # labelled "home.packages closure" was never that closure. Measured when samba
+  # was added:
+  #
+  #   references of $out/home-path             202 entries, no samba-4.23.8
+  #   references of $(readlink -f ...)         198 entries, samba-4.23.8 present
+  #
+  # samba installs binaries into home-path/bin and still did not appear. The
+  # golden would have recorded its addition, and any later removal, as no change
+  # at all. That is the failure mode this whole file exists to prevent, sitting
+  # in the file itself.
+  nix-store -q --references "$(readlink -f "$out/home-path")" \
+    | sed -E 's#/nix/store/[a-z0-9]{32}-##' | sort
   echo "# ===== SYSTEMD USER UNITS ====="
   while IFS= read -r u; do
     echo "## $(basename "$u")"
