@@ -238,12 +238,29 @@ EOF
 # Without it the Mac gets NT_STATUS_LOGON_FAILURE, which reads like a wrong
 # password rather than an absent account. Fail here instead, with the fix.
 #
+# THE FIX USED TO NAME smbpasswd, AND THAT WAS WRONG. smbpasswd cannot create an
+# account in a user-owned passdb, and it fails two different ways depending on
+# how you ask:
+#
+#   $ smbpasswd -s -a USER -c CONF
+#   When run by root:
+#       smbpasswd [options] [username]      <- prints usage and exits
+#   $ smbpasswd -L -s -a USER -c CONF
+#   smbpasswd -L can only be used by root.
+#
+# Neither says "you want a different tool", so the hint sent the reader in a
+# circle while smbd crash-looped behind them. pdbedit writes the passdb directly
+# and has no root check, which is what a rootless smbd needs.
+#
 # The password itself is never in this repo and never in this script. See
-# SECRETS.md and .agents/rules.md.
+# SECRETS.md and .agents/rules.md. Omitting -t makes pdbedit prompt twice with
+# echo off, so nothing lands in shell history either.
 if ! pdbedit -L -s "$conf" 2>/dev/null | grep -q "^$user:"; then
   printf 'samba-timemachine: no samba password set for %s\n' "$user" >&2
-  printf 'samba-timemachine: set one, without printing it, with:\n' >&2
-  printf '  smbpasswd -s -a %s -c %s\n' "$user" "$conf" >&2
+  printf 'samba-timemachine: create the account, prompting for the password:\n' >&2
+  printf '  pdbedit -a -u %s -s %s\n' "$user" "$conf" >&2
+  printf 'samba-timemachine: or pipe it in from safetybox, adding -t\n' >&2
+  printf 'samba-timemachine: then: systemctl --user restart smbd\n' >&2
   exit 1
 fi
 
