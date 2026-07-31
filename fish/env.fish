@@ -144,6 +144,53 @@ set -x GOPATH "$HOME/go"
 set -x GOPRIVATE "github.com/dqfan2012"
 
 # ================================
+# pkg-config (system libraries)
+# ================================
+# THE NIX pkg-config CANNOT SEE SYSTEM LIBRARIES, which is the whole reason this
+# block exists. configure_path.fish forces the Nix profile to the front of PATH,
+# so ~/.nix-profile/bin/pkg-config wins over /usr/bin/pkg-config. Its compiled-in
+# search path is Nix store only, and it never looks in /usr/lib/<triplet>/pkgconfig.
+# Measured on this box: 365 .pc files installed under /usr, and pkg-config found
+# NONE of them, openssl and dbus-1 included.
+#
+# THIS IS NOT ACADEMIC. It is the failure that stopped a Tauri build. libdbus-sys
+# panicked with "The system library dbus-1 required by crate libdbus-sys was not
+# found" while libdbus-1-dev was installed and
+# /usr/lib/x86_64-linux-gnu/pkgconfig/dbus-1.pc was sitting on disk. The obvious
+# reading of that error is a missing package, and it is wrong. Recorded because
+# the error text actively points the reader at the wrong fix.
+#
+# home/libraries.nix owns the Nix half of PKG_CONFIG_PATH and cannot own this
+# half. A home.sessionVariables value is a static string, and the system search
+# path is a runtime answer that differs per distro.
+#
+# PROBED, NOT HARDCODED. /usr/lib/x86_64-linux-gnu/pkgconfig is Debian multiarch,
+# and the same directory is /usr/lib64/pkgconfig on fedora and suse. Asking the
+# SYSTEM pkg-config for its own default path answers correctly on every family
+# with no triplet table to maintain. Guarded on the binary, so a host without it
+# stays silent instead of exporting a broken value.
+#
+# APPENDED, so the Nix profile keeps leading. A library codified in the flake
+# wins over a distro copy of the same name, the same precedence
+# configure_path.fish enforces for binaries.
+if test -x /usr/bin/pkg-config
+    set -l sys_pc (/usr/bin/pkg-config --variable pc_path pkg-config 2>/dev/null)
+    if test -n "$sys_pc"
+        # Trim the trailing colon libraries.nix leaves behind. Its value ends in
+        # :$PKG_CONFIG_PATH, which expands to nothing on a fresh shell, so the
+        # variable arrives here ending in a separator and would otherwise gain an
+        # empty entry. pkg-config tolerates one, but it shows up in its own error
+        # output as a blank search path line, which reads like a bug.
+        set -l cur (string trim --right --chars=: -- "$PKG_CONFIG_PATH")
+        if test -n "$cur"
+            set -x PKG_CONFIG_PATH "$cur:$sys_pc"
+        else
+            set -x PKG_CONFIG_PATH "$sys_pc"
+        end
+    end
+end
+
+# ================================
 # pnpm
 # ================================
 # pnpm is NOT from Nix, unlike node, bun and deno beside it in home/languages.nix.

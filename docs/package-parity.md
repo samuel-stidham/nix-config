@@ -107,6 +107,7 @@ is resolved now by a run-time probe. Base Debian, which alone lacked a
 | openssl devel | `libssl-dev` | `openssl-devel` | `libopenssl-devel` | renamed |
 | ayatana appindicator3 devel | `libayatana-appindicator3-dev` | `libayatana-appindicator-gtk3-devel`, probed | `libayatana-appindicator3-devel` | renamed, probed |
 | librsvg2 devel | `librsvg2-dev` | `librsvg2-devel` | `librsvg-devel` | renamed |
+| dbus devel | `libdbus-1-dev` | `dbus-devel` | `dbus-1-devel` | renamed |
 | libatomic runtime | `libatomic1` | `libatomic` | `libatomic1` | renamed |
 
 ## The Tauri build dependencies
@@ -143,12 +144,43 @@ matches what the debian and fedora arms install. Upstream omits `libxdo` for sus
 entirely even though Tauri v2 links it, and `xdotool-devel` is the provider of
 `pkgconfig(libxdo)` there.
 
-Two packages in these rows are not from Tauri's list. `pkg-config` is required
+Three packages in these rows are not from Tauri's list. `pkg-config` is required
 because the Rust `system-deps` crate shells out to it, and `apt-cache depends
 libwebkit2gtk-4.1-dev` names no `pkg-config` among its direct dependencies, so
 nothing else guarantees it. `libatomic` is pnpm's, not Tauri's: the glibc build of
 pnpm needs `libatomic.so.1` and dies with "error while loading shared libraries"
 without it.
+
+The dbus devel package is the third, and it was found by building `pacer` rather
+than by reading any list. It arrives through the crate graph instead of through
+Tauri, since a plugin pulls `libdbus-sys`, whose build script demands `dbus-1` by
+pkg-config and panics without it. The two RPM families spell it the opposite way
+round, `dbus-devel` on fedora and `dbus-1-devel` on suse, both verified in
+containers.
+
+### Installing them is not enough
+
+Having these packages on disk does not make them visible to a build on this
+machine, and the failure looks exactly like a missing package. `configure_path.fish`
+forces the Nix profile to the front of PATH, so `~/.nix-profile/bin/pkg-config`
+wins over `/usr/bin/pkg-config`. The Nix binary's compiled-in search path covers
+the Nix store only and never reads `/usr/lib/<triplet>/pkgconfig`. Measured on the
+reference box: 365 `.pc` files installed under `/usr` and not one of them found,
+`openssl` and `dbus-1` included.
+
+That is the failure that stopped the first real `pacer` build. `libdbus-sys`
+panicked with "The system library dbus-1 required by crate libdbus-sys was not
+found" while `libdbus-1-dev` was installed and
+`/usr/lib/x86_64-linux-gnu/pkgconfig/dbus-1.pc` was on disk. The error text points
+at installing a package, which is the wrong fix.
+
+`fish/env.fish` closes this by appending the system search path to
+`PKG_CONFIG_PATH`. It asks the system `pkg-config` for its own default path rather
+than hardcoding a directory, because Debian multiarch puts it under
+`/usr/lib/x86_64-linux-gnu/pkgconfig` and fedora and suse use `/usr/lib64/pkgconfig`.
+The probe answers correctly on every family with no table to maintain. It appends
+rather than prepends, so a library codified in the flake still wins over a distro
+copy of the same name.
 
 On an atomic base none of this is installed. `_system_atomic` reports what is
 missing and prints Tauri's own OSTree command, because layering costs a reboot and

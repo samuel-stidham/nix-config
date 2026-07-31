@@ -158,6 +158,7 @@ NIX_HOME /home/samuelstidham/.nix-profile
 NIX_PROFILES '/nix/var/nix/profiles/default /home/samuelstidham/.nix-profile'
 NIX_SSL_CERT_FILE /etc/ssl/certs/ca-certificates.crt
 PATH '/home/samuelstidham/.nix-profile/bin' '/home/samuelstidham/…
+PKG_CONFIG_PATH '/usr/local/lib/x86_64-linux-gnu/pkgconfig' '/usr/local/lib/…
 PNPM_HOME /home/samuelstidham/.local/share/pnpm
 PWD /home/samuelstidham/Code/samuel-stidham/nix-config
 QT_QPA_PLATFORM xcb

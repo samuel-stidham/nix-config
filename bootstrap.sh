@@ -571,11 +571,16 @@ _system_debian() {
   # `apt-cache policy`, libwebkit2gtk-4.1-dev at 2.52.3-0ubuntu0.24.04.1 and
   # libayatana-appindicator3-dev at 0.5.93-1build3. Not verified as behaviour, no
   # Tauri build was run from these packages.
+  # libdbus-1-dev is NOT in Tauri's published list and a real build still needs it.
+  # It arrives through the crate graph rather than through Tauri itself: a plugin
+  # pulls libdbus-sys, whose build script demands dbus-1 by pkg-config and panics
+  # without it. Found by building pacer, not by reading, which is why no published
+  # list has it.
   if ! pkg_install \
     libwebkit2gtk-4.1-dev build-essential pkg-config \
     curl wget file \
     libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
-    libatomic1; then
+    libdbus-1-dev libatomic1; then
     echo "Tauri build dependencies did not install. A Tauri app will fail at" >&2
     echo "'cargo build' with a pkg-config error naming webkit2gtk-4.1." >&2
   fi
@@ -694,11 +699,14 @@ _system_fedora() {
   # VERIFIED in a fedora:latest container: this exact set builds a transaction with
   # `dnf install --assumeno`, 467 packages to install, before it aborts as asked.
   # Not verified as behaviour, nothing was installed and no Tauri build was run.
+  # dbus-devel on fedora and dbus-1-devel on suse, which is a real inversion and
+  # not a typo. Both verified in containers. See the debian arm for why a dbus
+  # devel package is in this list at all when no published Tauri list names one.
   if ! pkg_install \
     webkit2gtk4.1-devel gcc gcc-c++ make pkgconf-pkg-config \
     curl "$tauri_wget" file \
     libxdo-devel openssl-devel "$tauri_appind" librsvg2-devel \
-    libatomic; then
+    dbus-devel libatomic; then
     echo "Tauri build dependencies did not install. A Tauri app will fail at" >&2
     echo "'cargo build' with a pkg-config error naming webkit2gtk-4.1." >&2
   fi
@@ -859,11 +867,14 @@ _system_suse() {
   # 1.13 GiB of packages, no unresolved name. Every individual name was also checked
   # on Leap with --match-exact. Not verified as behaviour, nothing was installed and
   # no Tauri build was run on either release.
+  # dbus-1-devel here, dbus-devel on fedora. The two RPM families spell it the
+  # opposite way round, both verified in containers. See the debian arm for why a
+  # dbus devel package is needed when no published Tauri list names one.
   if ! pkg_install \
     "$tauri_webkit" gcc gcc-c++ make pkgconf-pkg-config \
     curl wget file \
     xdotool-devel libopenssl-devel libayatana-appindicator3-devel librsvg-devel \
-    libatomic1; then
+    dbus-1-devel libatomic1; then
     echo "Tauri build dependencies did not install. A Tauri app will fail at" >&2
     echo "'cargo build' with a pkg-config error naming webkit2gtk-4.1." >&2
   fi
@@ -949,7 +960,7 @@ _system_atomic() {
     tauri_missing=" pkg-config(and therefore every module below is unknown)"
   else
     local mod
-    for mod in webkit2gtk-4.1 libxdo ayatana-appindicator3-0.1 librsvg-2.0 openssl; do
+    for mod in webkit2gtk-4.1 libxdo ayatana-appindicator3-0.1 librsvg-2.0 openssl dbus-1; do
       pkg-config --exists "$mod" 2>/dev/null || tauri_missing="$tauri_missing $mod"
     done
   fi
@@ -963,7 +974,7 @@ _system_atomic() {
     echo "are layered. Tauri's own OSTree command, then a reboot:" >&2
     echo "  sudo rpm-ostree install webkit2gtk4.1-devel openssl-devel curl wget \\" >&2
     echo "    file libappindicator-gtk3-devel librsvg2-devel libxdo-devel \\" >&2
-    echo "    gcc gcc-c++ make libatomic" >&2
+    echo "    gcc gcc-c++ make dbus-devel libatomic" >&2
     echo "  sudo systemctl reboot" >&2
     echo "libatomic is not Tauri's, it is pnpm's. See the pnpm function." >&2
   else
