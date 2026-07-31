@@ -178,6 +178,7 @@ ZLS_HOME /home/samuelstidham/zls
 _ZO_FZF_OPTS '--no-sort --keep-right --height=50% --info=inline --layout=…
 # ===== PATH (order is behavior) =====
 /home/samuelstidham/.nix-profile/bin
+/home/samuelstidham/.local/share/pnpm/bin
 /home/samuelstidham/.deno/bin
 /home/samuelstidham/.bun/bin
 /home/samuelstidham/.cargo/bin
