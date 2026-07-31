@@ -71,6 +71,17 @@ if not set -q SET_PATH_SOURCED
     add_to_path "$HOME/.cargo/bin"    # cargo install
     add_to_path "$HOME/.bun/bin"      # bun add --global
     add_to_path "$HOME/.deno/bin"     # deno install
+    # PNPM_HOME itself, with no /bin suffix, which is the odd one out on this list.
+    # pnpm puts the pnpm binary and every `pnpm add --global` shim directly in that
+    # directory rather than in a bin subdirectory under it. Appending /bin here
+    # would add a path that does not exist and pnpm would simply be missing.
+    #
+    # This line is what puts pnpm on PATH AT ALL, not a shadow of a Nix copy. pnpm
+    # is deliberately not in the flake so it can self-update, so nothing else adds
+    # it. env.fish sets PNPM_HOME and bootstrap.sh passes the same value to the
+    # installer. Guarded, because a machine that has not run pnpm_cli yet has the
+    # variable set and the directory absent, and add_to_path never tests -d.
+    test -d "$PNPM_HOME"; and add_to_path "$PNPM_HOME"
 
     # Nix home-manager profile.
     #

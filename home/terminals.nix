@@ -12,6 +12,24 @@ in
 
 let
   nerdFont = "JetBrainsMono Nerd Font";
+
+  # The attach-or-create launcher for the dev session, as a store command. Ghostty
+  # opens into it (initial-command below) and the `servers` fish function calls it,
+  # so both routes land in the SAME named session instead of racing to build two.
+  #
+  # In the store rather than referenced out of the checkout, for the reason
+  # home/btrfs-scrub.nix spells out: a path into a git checkout breaks the moment
+  # the repo moves, and this one is load-bearing for opening a terminal at all.
+  # The trade is that editing the script needs a `home-manager switch` to take
+  # effect, which is right for something reviewed once and then run constantly.
+  devSession = pkgs.writeShellApplication {
+    name = "dev-session";
+    # zellij does the work; gnugrep and gawk parse the session list. Ghostty gives
+    # initial-command a minimal PATH, so a missing tool here is a build error
+    # rather than a terminal that will not open.
+    runtimeInputs = with pkgs; [ zellij gnugrep gawk ];
+    text = builtins.readFile ../scripts/dev-session.sh;
+  };
 in
 {
   # Ghostty. It ships Catppuccin themes built in, so the theme is just a name.
@@ -28,6 +46,28 @@ in
     # Shift+Enter sends a newline (LF), so multiline input works in Claude Code
     # and other apps. Plain Enter still submits.
     keybind = shift+enter=text:\n
+
+    # OPEN STRAIGHT INTO THE DEV SESSION.
+    #
+    # The ask was two GHOSTTY tabs, one per zellij layout. Ghostty 1.3.1 cannot do
+    # that and it is not a config gap, it is missing plumbing. There is no startup
+    # option that opens a second tab; `ghostty +new-window` opens a WINDOW and its
+    # man page says so; and the running instance's D-Bus action list is exactly
+    # open-config, present-surface, quit, new-window-command, new-window,
+    # reload-config, with no new-tab among them. `new-tab` exists in 1.3.1 only as
+    # a value of macos-dock-drop-behavior, which does nothing on Linux. The only
+    # way to get a real second Ghostty tab is injecting ctrl+shift+t with xdotool,
+    # which is a race against window mapping and is not installed here anyway.
+    #
+    # So the two tabs are ZELLIJ's, from the servers layout below: tab one the 2x2
+    # grid, tab two a single full-window pane. Same shape, one process cheaper,
+    # and it survives Ghostty upgrades because it does not depend on Ghostty.
+    #
+    # initial-command, NOT command. command would apply to every surface, so
+    # ctrl+shift+t would open another zellij inside the terminal instead of a
+    # shell. initial-command applies only to the first surface of each Ghostty
+    # process, which is exactly "when I open Ghostty, put me in my session".
+    initial-command = ${devSession}/bin/dev-session
   '';
 
   # Alacritty. Font here, colors from the catppuccin module.
@@ -94,5 +134,10 @@ in
   # ghostty config file above stays unguarded on purpose, since a cask Ghostty
   # would still read ~/.config/ghostty. Unverified on darwin, no such machine
   # available.
-  home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.ghostty ];
+  #
+  # devSession is OUTSIDE the guard on purpose. It is a shell script over zellij,
+  # and zellij is enabled unguarded above, so it builds and runs on darwin too. It
+  # is in home.packages, not merely referenced by initial-command, because the
+  # `servers` fish function calls it by name from PATH.
+  home.packages = [ devSession ] ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.ghostty ];
 }

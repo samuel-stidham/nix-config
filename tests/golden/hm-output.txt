@@ -32,6 +32,7 @@ curlie-1.8.2
 dbeaver-bin-26.1.1
 delve-1.27.0
 deno-2.9.2
+dev-session
 direnv-2.37.1
 dotnet-wrapped-combined
 duckdb-1.5.3

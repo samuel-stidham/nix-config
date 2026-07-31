@@ -233,16 +233,18 @@ function update_ssh_auth_sock
 end
 
 function servers --description 'Open the dev-servers zellij layout'
-    # -n / --new-session-with-layout starts a NEW zellij session with a layout
-    # (home/terminals.nix). Plain --layout without -n tries to add a tab to an
-    # existing session instead, which is why "--session X --layout Y" failed with
-    # "There is no active session". This opens a fresh session each run, so quit a
-    # running one first or its stacks collide (visibly, since close_on_exit=false).
-    if set -q ZELLIJ
-        echo "You're inside zellij already; run this from a plain terminal."
-        return 1
-    end
-    zellij -n servers --layout servers
+    # Thin wrapper now. The logic lives in scripts/dev-session.sh, in the store as
+    # `dev-session` (home/terminals.nix), because Ghostty opens into that same
+    # command via initial-command. Two copies of "attach or create" would drift,
+    # and the drift would show up as two sessions fighting over the same ports.
+    #
+    # The body used to be `zellij -n servers --layout servers`, which named no
+    # session, so every run built a new randomly-named one rather than returning
+    # to the existing session. Six dead ones had accumulated by the time this was
+    # replaced. dev-session names the session, which is what makes the second
+    # launch attach instead of duplicate. The ZELLIJ nesting guard moved in there
+    # too, so calling it from a pane still refuses.
+    dev-session
 end
 
 # ----------------------------------------

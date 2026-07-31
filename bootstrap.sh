@@ -537,6 +537,48 @@ _system_debian() {
   # TOMBSTONE: `mit-scheme` was the last entry here. Scheme is guile now, from
   # Nix, see home/languages.nix. guile is in nixpkgs and packaged on every distro,
   # so Scheme needs no system-layer package and no per-distro name at all.
+
+  # TAURI AND GTK APP DEV LIBRARIES. pacer is a Tauri v2 app and does not compile
+  # without these. Tauri resolves webkit2gtk 4.1 through pkg-config, so the -dev
+  # packages are the requirement, not the runtime shared objects.
+  #
+  # These come from the DISTRO and not from Nix, which is a deliberate reversal of
+  # how this repo usually treats a development library. Every one of them exists in
+  # nixpkgs, verified: webkitgtk_4_1 is 2.52.4 there and ships webkit2gtk-4.1.pc.
+  # The reason to refuse it is that this is not NixOS. A Nix webkitgtk links Nix's
+  # Mesa while the running GPU driver is the distro's, and the app then comes up
+  # with a blank window or loses its WebProcess at launch. The distro build links
+  # the system loader and matches the driver already on the machine.
+  #
+  # There is a second reason, specific to this repo. home/libraries.nix appends the
+  # Nix profile to C_INCLUDE_PATH and LIBRARY_PATH for EVERY compile on the machine.
+  # SDL2 and boost are self-contained and safe there. A full GTK stack is not, and
+  # putting glib, cairo, pango and gdk-pixbuf on the global include path would
+  # shadow the system copies for unrelated builds.
+  #
+  # pkg-config is NOT in Tauri's published list and is still required, because the
+  # Rust system-deps crate shells out to it. Checked on this box: `apt-cache depends
+  # libwebkit2gtk-4.1-dev` lists no pkg-config among its direct dependencies, so
+  # nothing in the list above is guaranteed to pull it.
+  #
+  # libatomic1 is here for pnpm rather than Tauri. See the pnpm function.
+  #
+  # Its OWN pkg_install, not the transaction above, for the reason the mit-scheme
+  # tombstone in _system_fedora records at length. One absent name here must not
+  # take podman, steam and every filesystem tool down with it.
+  #
+  # VERIFIED on this box, Ubuntu 24.04: every name below has a real candidate under
+  # `apt-cache policy`, libwebkit2gtk-4.1-dev at 2.52.3-0ubuntu0.24.04.1 and
+  # libayatana-appindicator3-dev at 0.5.93-1build3. Not verified as behaviour, no
+  # Tauri build was run from these packages.
+  if ! pkg_install \
+    libwebkit2gtk-4.1-dev build-essential pkg-config \
+    curl wget file \
+    libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+    libatomic1; then
+    echo "Tauri build dependencies did not install. A Tauri app will fail at" >&2
+    echo "'cargo build' with a pkg-config error naming webkit2gtk-4.1." >&2
+  fi
 }
 
 _system_fedora() {
@@ -613,6 +655,53 @@ _system_fedora() {
   # ssh-reachable debian box is unreachable on fedora, which is not the same
   # machine. Enable it, --now so it also starts this session.
   sudo systemctl enable --now sshd
+
+  # TAURI AND GTK APP DEV LIBRARIES, the fedora peer of the block in _system_debian.
+  # That function carries the full reasoning for why these come from the distro and
+  # not from Nix. Read it there rather than duplicating it here.
+  #
+  # WGET DOES NOT EXIST ON FEDORA and that is the surprise in this list. Tauri's
+  # published fedora command says `wget`, and it is wrong on current Fedora.
+  # VERIFIED in a fedora:latest container: `dnf list wget` fails, while
+  # `dnf provides /usr/bin/wget` answers with two shim packages, wget2-wget and
+  # wget1-wget. So the binary is real and only the package name moved. Copying
+  # upstream's list verbatim would have aborted the whole transaction on a name
+  # that has not existed for releases.
+  #
+  # APPINDICATOR has two spellings here. Tauri publishes libappindicator-gtk3-devel
+  # and Fedora also carries libayatana-appindicator-gtk3-devel, the maintained
+  # ayatana fork that the debian and suse arms both use. VERIFIED in the same
+  # container: BOTH resolve. The ayatana name leads so all three families land on
+  # the same library, with upstream's name as the fallback.
+  #
+  # gcc, gcc-c++ and make are spelled out rather than `dnf group install
+  # "c-development"`, which is what Tauri publishes for fedora. A group is a dnf
+  # concept and pkg_install dispatches to rpm-ostree on Bazzite, where that group
+  # form does not apply. Three explicit names work identically on both.
+  local tauri_appind tauri_wget
+  # The picks fall back to upstream's name rather than `return 1`. A pick can fail
+  # for a reason that is not a missing package: _dnf_pick shells out to `dnf`, and
+  # on an ostree host dnf may not be present at all. Aborting there would skip the
+  # libraries over a probe failure instead of a real absence.
+  if ! tauri_appind="$(_dnf_pick libayatana-appindicator-gtk3-devel libappindicator-gtk3-devel)"; then
+    tauri_appind="libappindicator-gtk3-devel"
+    echo "appindicator probe failed on this fedora. Falling back to $tauri_appind." >&2
+  fi
+  if ! tauri_wget="$(_dnf_pick wget2-wget wget1-wget wget)"; then
+    tauri_wget="wget2-wget"
+    echo "wget probe failed on this fedora. Falling back to $tauri_wget." >&2
+  fi
+  # VERIFIED in a fedora:latest container: this exact set builds a transaction with
+  # `dnf install --assumeno`, 467 packages to install, before it aborts as asked.
+  # Not verified as behaviour, nothing was installed and no Tauri build was run.
+  if ! pkg_install \
+    webkit2gtk4.1-devel gcc gcc-c++ make pkgconf-pkg-config \
+    curl "$tauri_wget" file \
+    libxdo-devel openssl-devel "$tauri_appind" librsvg2-devel \
+    libatomic; then
+    echo "Tauri build dependencies did not install. A Tauri app will fail at" >&2
+    echo "'cargo build' with a pkg-config error naming webkit2gtk-4.1." >&2
+  fi
 }
 
 _system_suse() {
@@ -732,6 +821,52 @@ _system_suse() {
   # installs no Scheme package. mit-scheme had no openSUSE package anyway, verified
   # absent from both the x86_64 and noarch oss indexes. guile is in nixpkgs, so one
   # Nix package closes the gap on every family and there is nothing to do here.
+
+  # TAURI AND GTK APP DEV LIBRARIES, the suse peer of the block in _system_debian.
+  # That function carries the full reasoning for taking these from the distro rather
+  # than from Nix.
+  #
+  # THE WEBKIT DEVEL NAME IS INVERTED BETWEEN TUMBLEWEED AND LEAP. This is the one
+  # genuinely surprising row in this whole change, and no FAMILY branch can express
+  # it, because both releases are FAMILY=suse. VERIFIED in containers, both ways
+  # round:
+  #   Tumbleweed   webkitgtk3-devel   exists, webkit2gtk3-devel does NOT
+  #   Leap         webkit2gtk3-devel  exists, webkitgtk3-devel  does NOT
+  # On each release `zypper se --provides "pkgconfig(webkit2gtk-4.1)"` names the one
+  # that is present, so both really are the Tauri 4.1 devel package under two names.
+  # This is the libfuse2t64 situation again, a per-RELEASE cutover inside one family,
+  # and the probe is the only honest answer.
+  #
+  # Tauri's published openSUSE command says webkit2gtk3-devel, which is correct on
+  # Leap and simply absent on Tumbleweed. Following upstream verbatim would abort
+  # the transaction on the release this machine family is most likely to run.
+  #
+  # TWO MORE DEPARTURES from Tauri's published suse list, both deliberate. It says
+  # libappindicator3-1, which is a RUNTIME library and the old non-ayatana one, so
+  # it cannot satisfy a build. libayatana-appindicator3-devel is the devel package
+  # and matches what the debian and fedora arms install, VERIFIED present on both
+  # Tumbleweed and Leap. Upstream also omits libxdo for suse entirely, though Tauri
+  # v2 links it on Linux. xdotool-devel is the provider of pkgconfig(libxdo) here,
+  # confirmed with `zypper se --provides`.
+  local tauri_webkit
+  if ! tauri_webkit="$(_zypper_pick webkitgtk3-devel webkit2gtk3-devel)"; then
+    echo "No webkit2gtk 4.1 devel package resolves on this openSUSE." >&2
+    echo "Tried webkitgtk3-devel (Tumbleweed) and webkit2gtk3-devel (Leap)." >&2
+    echo "A Tauri app will not build until one of them is installed." >&2
+    return 0
+  fi
+  # VERIFIED on Tumbleweed: this exact set resolves with `zypper install --dry-run`,
+  # 1.13 GiB of packages, no unresolved name. Every individual name was also checked
+  # on Leap with --match-exact. Not verified as behaviour, nothing was installed and
+  # no Tauri build was run on either release.
+  if ! pkg_install \
+    "$tauri_webkit" gcc gcc-c++ make pkgconf-pkg-config \
+    curl wget file \
+    xdotool-devel libopenssl-devel libayatana-appindicator3-devel librsvg-devel \
+    libatomic1; then
+    echo "Tauri build dependencies did not install. A Tauri app will fail at" >&2
+    echo "'cargo build' with a pkg-config error naming webkit2gtk-4.1." >&2
+  fi
 }
 
 _system_atomic() {
@@ -791,6 +926,50 @@ _system_atomic() {
   else
     echo "Filesystem and compose tools all present, nothing to layer."
   fi
+  # TAURI AND GTK APP DEV LIBRARIES, reported and never layered. The rest of this
+  # function explains why: layering on an atomic base costs a reboot, so it names
+  # what is missing rather than installing it. Tauri publishes a dedicated OSTree
+  # command, and it is reproduced verbatim below so the operator can paste it.
+  #
+  # A LIBRARY IS PROBED BY ITS pkg-config MODULE, not by a binary. There is no
+  # `webkit2gtk-4.1` executable to look for, and `rpm -q` would ask about a package
+  # name rather than about what the build actually needs. pkg-config answers the
+  # real question, which is whether `cargo build` can resolve the module. The five
+  # module names were read off the packages themselves rather than recalled:
+  # webkit2gtk-4.1.pc, libxdo.pc and ayatana-appindicator3-0.1.pc from the webkitgtk,
+  # xdotool and libayatana-appindicator dev outputs, librsvg-2.0.pc and openssl.pc
+  # from librsvg and openssl.
+  #
+  # pkg-config itself is checked FIRST and separately. Without it every module probe
+  # below returns false, and the report would then blame five libraries when the
+  # real answer is one missing tool. That is the kind of misleading output this
+  # function exists to avoid.
+  local tauri_missing=""
+  if ! _have pkg-config; then
+    tauri_missing=" pkg-config(and therefore every module below is unknown)"
+  else
+    local mod
+    for mod in webkit2gtk-4.1 libxdo ayatana-appindicator3-0.1 librsvg-2.0 openssl; do
+      pkg-config --exists "$mod" 2>/dev/null || tauri_missing="$tauri_missing $mod"
+    done
+  fi
+  local btool
+  for btool in gcc g++ make; do
+    _have "$btool" || tauri_missing="$tauri_missing $btool"
+  done
+  if [ -n "$tauri_missing" ]; then
+    echo "MISSING for Tauri builds on this atomic base:$tauri_missing" >&2
+    echo "A Tauri app fails at 'cargo build' with a pkg-config error until these" >&2
+    echo "are layered. Tauri's own OSTree command, then a reboot:" >&2
+    echo "  sudo rpm-ostree install webkit2gtk4.1-devel openssl-devel curl wget \\" >&2
+    echo "    file libappindicator-gtk3-devel librsvg2-devel libxdo-devel \\" >&2
+    echo "    gcc gcc-c++ make libatomic" >&2
+    echo "  sudo systemctl reboot" >&2
+    echo "libatomic is not Tauri's, it is pnpm's. See the pnpm function." >&2
+  else
+    echo "Tauri build dependencies all present, nothing to layer."
+  fi
+
   # _have was defined inside this function, and bash leaks such definitions to
   # global scope, so unset it to keep the namespace clean.
   unset -f _have
@@ -1981,6 +2160,67 @@ claude_code() {
   curl -fsSL https://claude.ai/install.sh | bash
 }
 
+pnpm_cli() {
+  log "pnpm"
+  # pnpm from its own installer and NOT from Nix, so it can self-update. Same trade
+  # as Claude Code above and the AWS CLI below: a pinned nixpkgs build cannot run
+  # `pnpm self-update`, and rolling updates are the whole point of choosing it.
+  #
+  # This is a DELIBERATE reversal of what home/languages.nix does for the other
+  # JavaScript tooling, where nodejs, bun and deno each replaced a curl installer
+  # precisely to get them into the store. It is recorded here so the next reader
+  # does not tidy the inconsistency away. pnpm is the exception on purpose, and
+  # nixpkgs does carry it, verified at 11.9.0, so the choice is not availability.
+  #
+  # NAMED pnpm_cli AND NOT pnpm, which matters more than it looks. A bash function
+  # shadows a binary of the same name for the rest of the script, so a function
+  # called `pnpm` would make the `command -v pnpm` guard below match ITSELF and
+  # report pnpm as already present on a machine that has never had it. main()
+  # dispatches on any defined function, so `./bootstrap.sh pnpm_cli` still works.
+  if command -v pnpm >/dev/null 2>&1; then
+    echo "pnpm already present: $(pnpm --version 2>/dev/null). It self-updates"
+    echo "with 'pnpm self-update', so leaving it."
+    return
+  fi
+
+  # THE ENV PREFIX GOES ON THE INTERPRETER, not on curl. `FOO=bar curl ... | sh -`
+  # sets FOO for curl, which is the process that does not read it, and the variable
+  # never reaches the script being piped in. The `| env FOO=bar sh -` form below is
+  # the one pnpm's own "In a Docker container" recipe uses, and it is the only one
+  # that works.
+  #
+  # SHELL and ENV are load bearing here. pnpm's installer edits a shell rc to export
+  # PNPM_HOME and extend PATH, and pnpm's own uninstall documentation names
+  # $HOME/.config/fish/config.fish as the file it writes for fish users. On this
+  # machine that path is a SYMLINK INTO THE NIX STORE, generated by home-manager
+  # and read only. Verified here: `test -w ~/.config/fish/config.fish` fails. So the
+  # installer would either die writing it or, worse, appear to work while the next
+  # `home-manager switch` threw the edit away.
+  #
+  # Pointing SHELL at sh and ENV at ~/.profile sends that write somewhere harmless
+  # and unmanaged by this repo. fish gets PNPM_HOME from fish/env.fish and its PATH
+  # entry from fish/configure_path.fish, both tracked here, which is where shell
+  # configuration belongs on this machine anyway.
+  #
+  # PNPM_HOME is passed rather than left to default, and the installer honours a
+  # pre-set value. fish/env.fish declares the same path, so the repo owns the
+  # location instead of inheriting whatever the installer picked. Change it in one
+  # place and the other is wrong, so the two are commented as a pair.
+  #
+  # curl and libatomic both come from the system layer, which runs earlier in all().
+  # The glibc build of pnpm dlopens libatomic.so.1 and dies with "error while
+  # loading shared libraries" without it, which is why libatomic1 on debian and suse
+  # and libatomic on fedora sit in those Tauri blocks.
+  curl -fsSL https://get.pnpm.io/install.sh \
+    | env PNPM_HOME="$HOME/.local/share/pnpm" SHELL=sh ENV="$HOME/.profile" sh -
+
+  # The installer put pnpm on PATH only for shells started AFTER it ran, so this
+  # shell still cannot see it. Report rather than probe, because `command -v pnpm`
+  # would fail here for that reason alone and read as a failed install.
+  echo "pnpm installed to \$PNPM_HOME (~/.local/share/pnpm)."
+  echo "Open a new shell to pick it up, or run: exec fish"
+}
+
 calibre() {
   log "Calibre"
   # Calibre's own binary installer, which upstream considers the supported path:
@@ -2143,6 +2383,7 @@ all() {
   godot_tooling
   savvy
   claude_code
+  pnpm_cli
   aws_cli
   ocaml
   calibre

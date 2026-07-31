@@ -97,6 +97,64 @@ is resolved now by a run-time probe. Base Debian, which alone lacked a
 | Flatseal | `com.github.tchx84.Flatseal` | same | same | parity, Flathub id |
 | GIMP | `org.gimp.GIMP` | same | same | parity, Flathub id |
 | Ente Auth | `io.ente.auth` | same | same | parity, Flathub id |
+| webkit2gtk 4.1 devel | `libwebkit2gtk-4.1-dev` | `webkit2gtk4.1-devel` | `webkitgtk3-devel` on Tumbleweed, `webkit2gtk3-devel` on Leap, probed | renamed, probed |
+| C toolchain | `build-essential` | `gcc`, `gcc-c++`, `make` | `gcc`, `gcc-c++`, `make` | renamed |
+| pkg-config | `pkg-config` | `pkgconf-pkg-config` | `pkgconf-pkg-config` | renamed |
+| curl | `curl` | `curl` | `curl` | parity |
+| wget | `wget` | `wget2-wget`, probed | `wget` | renamed, probed |
+| file | `file` | `file` | `file` | parity |
+| libxdo devel | `libxdo-dev` | `libxdo-devel` | `xdotool-devel` | renamed |
+| openssl devel | `libssl-dev` | `openssl-devel` | `libopenssl-devel` | renamed |
+| ayatana appindicator3 devel | `libayatana-appindicator3-dev` | `libayatana-appindicator-gtk3-devel`, probed | `libayatana-appindicator3-devel` | renamed, probed |
+| librsvg2 devel | `librsvg2-dev` | `librsvg2-devel` | `librsvg-devel` | renamed |
+| libatomic runtime | `libatomic1` | `libatomic` | `libatomic1` | renamed |
+
+## The Tauri build dependencies
+
+The eleven rows at the end of the table are the system libraries a Tauri v2 app
+needs to compile. They arrived with `pacer`. They are the one place this repo takes
+a development library from the distro rather than from Nix, and the reasoning sits
+in the block comment in `_system_debian`.
+
+Upstream publishes a per-distro list at `v2.tauri.app/start/prerequisites`. That
+list is the starting point for these rows and it is wrong in three places for the
+families here, each caught by checking the name against a real package manager.
+
+The openSUSE name is the worst of the three, because it is correct on one release
+and absent on the other. Tauri publishes `webkit2gtk3-devel`. That resolves on Leap
+and does not exist on Tumbleweed, where the same library is `webkitgtk3-devel`
+without the `2`. Each release lacks the other's name entirely. Verified in
+containers both ways, and on each release `zypper se --provides
+"pkgconfig(webkit2gtk-4.1)"` names the one that is present. No `FAMILY` branch can
+express this, since both are `FAMILY=suse`, so `_system_suse` probes with
+`_zypper_pick`. This is the `libfuse2t64` situation again, a per-release cutover
+inside one family.
+
+Tauri's Fedora list says `wget`, and Fedora has no package by that name. Verified
+in a `fedora:latest` container: `dnf list wget` fails, while `dnf provides
+/usr/bin/wget` answers with two shim packages, `wget2-wget` and `wget1-wget`. The
+binary is real and only the packaging moved. Copying the published list verbatim
+would abort the whole transaction on a name that has not existed for releases.
+
+Tauri's openSUSE list also says `libappindicator3-1`, which is a runtime library
+and the old pre-ayatana one, so it cannot satisfy a build at all. The devel package
+is `libayatana-appindicator3-devel`, present on both Tumbleweed and Leap, and it
+matches what the debian and fedora arms install. Upstream omits `libxdo` for suse
+entirely even though Tauri v2 links it, and `xdotool-devel` is the provider of
+`pkgconfig(libxdo)` there.
+
+Two packages in these rows are not from Tauri's list. `pkg-config` is required
+because the Rust `system-deps` crate shells out to it, and `apt-cache depends
+libwebkit2gtk-4.1-dev` names no `pkg-config` among its direct dependencies, so
+nothing else guarantees it. `libatomic` is pnpm's, not Tauri's: the glibc build of
+pnpm needs `libatomic.so.1` and dies with "error while loading shared libraries"
+without it.
+
+On an atomic base none of this is installed. `_system_atomic` reports what is
+missing and prints Tauri's own OSTree command, because layering costs a reboot and
+that function must not install behind the operator's back. It probes the five
+`pkg-config` modules rather than package names, since a library has no binary to
+look for.
 
 ## What the gaps do instead
 
