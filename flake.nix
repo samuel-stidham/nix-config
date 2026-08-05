@@ -60,7 +60,7 @@
           };
         };
 
-      perSystem = { pkgs, system, lib, ... }:
+      perSystem = { pkgs, system, ... }:
         let
           # HOME ROOT. The single hardcoded home path in this repo, and the
           # hardcode is structural rather than lazy.
@@ -115,6 +115,21 @@
           # it must outlive `nix run .#sites`. Keeping a second copy here would
           # be a config that looks authoritative and serves nothing.
 
+          # S3 credentials for the seaweedfs gateway below. NOT SECRETS. This
+          # pair is a loopback-only dev default in the same class as mariadb's
+          # passwordless root, published on purpose so every Laravel .env on
+          # this machine can copy it. Anything real comes from safetybox.
+          #
+          # It exists because the gateway denies anonymous callers. See the
+          # comment on services.seaweedfs below for the verification.
+          seaweedfsS3Config = pkgs.writeText "seaweedfs-s3-identities.json" (builtins.toJSON {
+            identities = [{
+              name = "dev";
+              credentials = [{ accessKey = "dev"; secretKey = "devsecret"; }];
+              actions = [ "Admin" "Read" "List" "Tagging" "Write" ];
+            }];
+          });
+
           phpFpmConf = pkgs.writeText "php-fpm-dev.conf" ''
             [global]
             pid = ${runDir}/php-fpm/php-fpm.pid
@@ -130,14 +145,11 @@
           '';
         in
         {
-        # mongodb is unfree and the pinned minio is flagged insecure. minio here
-        # only ever binds localhost for dev, so allowing it is acceptable.
+        # mongodb is unfree. An allowInsecurePredicate for minio sat here too
+        # and left with minio itself, replaced by seaweedfs below.
         _module.args.pkgs = import nixpkgs {
           inherit system;
-          config = {
-            allowUnfree = true;
-            allowInsecurePredicate = pkg: lib.getName pkg == "minio";
-          };
+          config.allowUnfree = true;
         };
 
         # nixGL runnable outputs. In legacyPackages, NOT packages, on purpose.
@@ -241,9 +253,44 @@
             enable = true;
             dataDir = "${runDir}/mongodb";
           };
-          services.minio."minio" = {
+          # SeaweedFS REPLACES minio as the local S3, decided 2026-08-04.
+          #
+          # minio was not broken here, which is worth stating, because the
+          # motive was upstream. nixpkgs marks minio abandoned, with six
+          # unpatched CVEs on the locked rev, two of them unauthenticated
+          # object writes. Laravel 13's docs also dropped MinIO from their
+          # S3-compatible examples. The endpoint swap is config alone, so
+          # nothing app-side depended on minio staying.
+          #
+          # Garage was the obvious alternative and fails one real need.
+          # Laravel's Flysystem adapter drives file visibility through
+          # GetObjectAcl and PutObjectAcl. Garage's compatibility page lists
+          # both as Missing, answered with 501 Not Implemented. SeaweedFS
+          # implements both, and presigned URLs for temporaryUrl(). It also
+          # has a services-flake module, garage does not.
+          #
+          # filer.enable is REQUIRED for the s3 gateway, the module throws
+          # at eval time without it.
+          #
+          # s3.config is set because the obvious default is a trap. The
+          # services-flake option text says a null config runs the gateway
+          # without authentication. On seaweedfs 4.40 the opposite happens,
+          # and it fails closed. healthz answers 200 while every anonymous
+          # request gets 403 AccessDenied (curl, 2026-08-04). Laravel needs
+          # credentials that work, so the dev identity above is wired in.
+          # Ports: s3 8333, filer 8888, master 9333, volume 8080. A Laravel
+          # .env points at it with AWS_ENDPOINT=http://127.0.0.1:8333,
+          # AWS_ACCESS_KEY_ID=dev, AWS_SECRET_ACCESS_KEY=devsecret, and
+          # AWS_USE_PATH_STYLE_ENDPOINT=true.
+          #
+          # Old minio data is left at ~/.local/share/dev-services/minio and
+          # is not migrated. Delete it by hand once nothing in it matters.
+          services.seaweedfs."seaweedfs" = {
             enable = true;
-            dataDir = "${runDir}/minio";
+            dataDir = "${runDir}/seaweedfs";
+            filer.enable = true;
+            s3.enable = true;
+            s3.config = seaweedfsS3Config;
           };
 
           # meilisearch is not a services-flake service, so run it as a plain

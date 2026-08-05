@@ -23,7 +23,7 @@ detail.
 | Command | What it does |
 | --- | --- |
 | `zellij -n servers --layout servers` | Both stacks side by side, session named `servers` so a second launch attaches instead of starting a conflicting copy. |
-| `nix run .#services` | MariaDB, PostgreSQL, Redis, MongoDB, MinIO, Meilisearch. Data under `~/.local/share/dev-services`. |
+| `nix run .#services` | MariaDB, PostgreSQL, Redis, MongoDB, SeaweedFS, Meilisearch. Data under `~/.local/share/dev-services`. |
 | `nix run .#sites` | php-fpm and **dnsmasq**. Serves `~/sites/<name>` at `<name>.test`. nginx is a systemd service now, see below. |
 | `secure_sites` | Generate a one year self signed cert for every folder in `~/sites`. Only for `.test`, which no CA will ever issue for. |
 | `systemctl --user status nginx` | The one nginx. Serves `*.test` and `*.home.samuelstidham.me`, and owns port 443. |

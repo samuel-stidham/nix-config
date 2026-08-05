@@ -1783,7 +1783,14 @@ btrfs_scrub_sudo() {
     echo "sudoers rule failed validation and was removed" >&2
     return 1
   fi
-  echo "Enable the timer: systemctl --user enable --now btrfs-scrub.timer"
+  # The old hint here named btrfs-scrub.timer, a unit that has never existed.
+  # home/btrfs-scrub.nix generates one timer PER DRIVE, btrfs-scrub-storageprime
+  # and btrfs-scrub-workdrive, and home-manager switch enables them itself
+  # through timers.target. Following the old hint returned "Unit file
+  # btrfs-scrub.timer does not exist". The natural escalation, sudo systemctl
+  # --user, fails too, because root has no path to a user session bus. Point at
+  # the check that shows real state instead of an enable nobody needs to run.
+  echo "Timers are enabled by home-manager switch. Check: systemctl --user list-timers 'btrfs-scrub-*'"
 }
 
 tailscale_net() {

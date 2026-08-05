@@ -97,7 +97,7 @@ Think of it as the Laravel Herd equivalent: one command, whole backend up.
 nix run .#services
 ```
 
-This starts MariaDB, PostgreSQL, Redis, MongoDB, MinIO, and Meilisearch as a
+This starts MariaDB, PostgreSQL, Redis, MongoDB, SeaweedFS, and Meilisearch as a
 foreground process group. Data persists under `~/.local/share/dev-services`. See
 `SITES.md` for ports and details.
 

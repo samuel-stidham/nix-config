@@ -53,7 +53,7 @@ handles init, health checks, and data directories. Data lives under
 | PostgreSQL | `pkgs.postgresql_18` | Pinned to 18. Has a `postgres-init` process that runs once then Completes. |
 | Redis | default | |
 | MongoDB | default | Unfree, allowed explicitly in `flake.nix`. |
-| MinIO | default | The pinned build is flagged insecure and allowed on purpose, it only ever binds localhost for dev. |
+| SeaweedFS | default | S3 gateway on 8333, filer on 8888. Dev credentials `dev` / `devsecret`, anonymous gets 403. Replaces MinIO, which nixpkgs marks abandoned. |
 
 **Meilisearch is different.** It is not a services-flake service, so it runs as a
 plain process-compose process:
@@ -72,12 +72,11 @@ tuning, edit the command, not a `services.*` block.
 > A `Completed` status in the process list is not a failure. `postgres-init` is
 > supposed to run once and exit. The header count (`5/10`) includes those.
 
-### Two unfree/insecure allowances
+### One unfree allowance
 
-`flake.nix` sets `allowUnfree` for MongoDB and an `allowInsecurePredicate` for
-MinIO specifically. MinIO is pinned to a version flagged insecure; it is accepted
-because it binds localhost only, for dev. Do not copy that allowance to anything
-exposed.
+`flake.nix` sets `allowUnfree` for MongoDB. An `allowInsecurePredicate` for
+MinIO lived here too. It left with MinIO, which nixpkgs marks abandoned by
+upstream with unpatched CVEs. SeaweedFS replaced it and carries no such flag.
 
 ---
 

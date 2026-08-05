@@ -20,12 +20,15 @@ This starts the backends as a foreground group. Stop with Ctrl-C.
 | PostgreSQL | 5432 | |
 | Redis | 6379 | |
 | MongoDB | 27017 | |
-| MinIO | 9000, 9001 | S3-compatible, the RustFS substitute |
+| SeaweedFS | 8333 | S3-compatible, the RustFS substitute. Filer UI on 8888, master 9333, volume 8080. |
 | Meilisearch | 7700 | |
 
-MinIO is the local S3. Point an AWS SDK at `http://localhost:9000` in dev, then
-swap to real S3 or RustFS in production through config alone. The console is on
-`http://localhost:9001`.
+SeaweedFS is the local S3. Point an AWS SDK at `http://localhost:8333` in dev,
+then swap to real S3 or RustFS in production through config alone. Path-style
+addressing is required, in Laravel that is `AWS_USE_PATH_STYLE_ENDPOINT=true`.
+Credentials are the dev pair `dev` / `devsecret`, declared in `flake.nix`.
+Anonymous requests get 403 by design. The filer's file browser is on
+`http://localhost:8888`.
 
 ## The sites stack
 
