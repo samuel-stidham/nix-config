@@ -18,6 +18,11 @@
     sdl3      # 3.4.10, lowercase attr on purpose
     raylib    # 6.0
     boost     # 1.89.0, swap to boost187 here if a project needs 1.87
+
+    # The c-project-skeleton family finds Check through pkg-config at CMake
+    # configure time, so it belongs here with the PKG_CONFIG_PATH wiring below.
+    # It reads as a tool, but what the build consumes is a library plus check.pc.
+    check     # 0.15.2, C unit test framework
   ];
 
   # On a non-NixOS system nothing teaches the toolchain about the Nix profile, so
