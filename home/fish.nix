@@ -7,8 +7,9 @@
 #
 # What is intentionally dropped from the old config.fish: pyenv init (no pyenv),
 # nvm loading (Nix owns node), and the conda initialize block plus
-# `conda activate pysci-ai` (conda migrates to micromamba). Add micromamba shell
-# init here once the pysci-ai env is rebuilt.
+# `conda activate pysci-ai`. The conda role went to devenv inside the
+# pysci-ai repo, so no shell init replaces it here. micromamba was the
+# plan once and is gone. See home/python.nix for the tombstone.
 
 {
   programs.fish = {
