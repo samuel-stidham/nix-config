@@ -26,5 +26,5 @@ let
   '';
 in
 {
-  home.packages = lib.optionals pkgs.stdenv.isLinux [ nixGLNvidia ];
+  home.packages = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ nixGLNvidia ];
 }

@@ -20,14 +20,15 @@
   # so they belong inside one guard rather than a per-package split. lib.optionals
   # drops the whole list to empty off Linux. Unverified on darwin, no such machine
   # available.
-  home.packages = lib.optionals pkgs.stdenv.isLinux (with pkgs; [
+  home.packages = lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
     # Screenshot tool moved to home/flameshot.nix, which manages it through the
     # services.flameshot module (X11 legacy grab + tray daemon).
 
-    # JetBrains IDE manager. Confirmed 3.5.0. It is not on Flathub, so Nix is the
-    # cleanest channel. Note it still self-updates the IDEs it installs into
-    # ~/.local/share/JetBrains, outside Nix. If you prefer fully declarative
-    # IDEs, drop this and use nixpkgs jetbrains.* attributes instead.
+    # JetBrains IDE manager. Confirmed 3.6.4.86641. It is not on Flathub, so Nix
+    # is the cleanest channel. Note it still self-updates the IDEs it installs
+    # into ~/.local/share/JetBrains, outside Nix. If you prefer fully
+    # declarative IDEs, drop this and use nixpkgs jetbrains.* attributes
+    # instead.
     jetbrains-toolbox
 
     # Octave for scientific work. Confirmed 11.3.0. Replaces the apt octave.

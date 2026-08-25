@@ -23,7 +23,7 @@ pkgs.php85.buildEnv {
     intl gd bcmath bz2 gmp ldap soap xsl zip tidy calendar exif ffi sodium
     gettext dba enchant snmp sockets pcntl
     amqp ast ds imagick mailparse mongodb uuid yaml smbclient
-  ]) ++ pkgs.lib.optional (!pkgs.stdenv.isDarwin) all.pdo_dblib;
+  ]) ++ pkgs.lib.optional (!pkgs.stdenv.hostPlatform.isDarwin) all.pdo_dblib;
   # date.timezone applies to every SAPI built from this php, so the CLI and the
   # php-fpm behind nginx share it. Store all datetimes as UTC in the database and
   # let this timezone drive display and offset math.

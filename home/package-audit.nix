@@ -35,7 +35,7 @@ let
   recordFile = ../docs/recorded-packages.txt;
 in
 {
-  systemd.user.services.package-audit = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services.package-audit = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit.Description = "Audit language-manager installs against the Nix record";
     Service = {
       Type = "oneshot";
@@ -55,7 +55,7 @@ in
 
   # Weekly. This is a nudge, not a safety system like the scrub, so a loose cadence
   # is right. Persistent catches the weeks the machine was off at the trigger.
-  systemd.user.timers.package-audit = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.timers.package-audit = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit.Description = "Weekly language-manager package audit";
     Timer = {
       OnCalendar = "Sun 10:00";

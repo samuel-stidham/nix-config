@@ -30,7 +30,9 @@
 
   home.username = "samuelstidham";
   home.homeDirectory =
-    if pkgs.stdenv.isDarwin then "/Users/samuelstidham" else "/home/samuelstidham";
+    if pkgs.stdenv.hostPlatform.isDarwin
+    then "/Users/samuelstidham"
+    else "/home/samuelstidham";
 
   # Bump only when the release notes tell you to.
   home.stateVersion = "24.11";
@@ -50,5 +52,5 @@
   # it has no job. mkIf leaves it unset on darwin rather than false, which is the
   # same result and keeps the assertion from ever firing. Unverified on darwin, no
   # such machine available.
-  targets.genericLinux.enable = lib.mkIf pkgs.stdenv.isLinux true;
+  targets.genericLinux.enable = lib.mkIf pkgs.stdenv.hostPlatform.isLinux true;
 }

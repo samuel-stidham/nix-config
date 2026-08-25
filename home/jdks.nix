@@ -10,7 +10,7 @@
 # different Java per Minecraft instance. The symlinks are stable across rebuilds,
 # which the raw /nix/store paths are not.
 #
-# All versions confirmed on nixpkgs-unstable on 2026-07-04:
+# All versions confirmed on nixpkgs-unstable on 2026-08-25:
 #   temurin-bin-8  8.0.492    temurin-bin-21 21.0.11
 #   temurin-bin-11 11.0.31    temurin-bin-25 25.0.3
 #   temurin-bin-17 17.0.19    temurin-bin-26 26.0.1
@@ -26,7 +26,8 @@
 
   # Default JDK on PATH. Only one java can lead, so only this one goes in
   # packages. The rest are reached through the stable symlinks below.
-  home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.temurin-bin-21 ];
+  home.packages =
+    lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.temurin-bin-21 ];
 
   # Stable per-version JDK homes. Point a PrismLauncher instance at
   # ~/.local/share/jdks/temurin-<N>/bin/java. Minecraft version to Java version:
@@ -34,7 +35,7 @@
   #   1.17 through 1.20.4   -> temurin-17
   #   1.20.5 and newer      -> temurin-21
   # 11, 25, and 26 are kept for other JVM work.
-  home.file = lib.mkIf pkgs.stdenv.isLinux {
+  home.file = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     ".local/share/jdks/temurin-8".source = pkgs.temurin-bin-8;
     ".local/share/jdks/temurin-11".source = pkgs.temurin-bin-11;
     ".local/share/jdks/temurin-17".source = pkgs.temurin-bin-17;

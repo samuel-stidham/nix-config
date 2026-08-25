@@ -137,6 +137,14 @@ the cost of the longer attribute path above.
 - `legacyPackages.<system>.nixGL` and `legacyPackages.<system>.nixGLNvidia`, kept
   out of `packages` so `nix flake check` does not choke on nixGL's impurity.
 
+There is no `overlays` output. `nix eval .#overlays` returns an empty set. Two
+overlays exist all the same, `bunOverlay` and `denoOverlay` in `flake.nix`, and
+they are internal `let` bindings applied where `mkHome` imports nixpkgs. They
+carry `bun` and `deno` ahead of the channel, which nixpkgs has not caught up to.
+So `pkgs.bun` and `pkgs.deno` inside a home configuration are not the versions a
+plain `nix shell nixpkgs#bun` would give you. Both overlays are temporary and
+each states the condition for its own deletion.
+
 ## Secrets and scanning
 
 No secret value ever lives in this repo. It holds references and encrypted blobs

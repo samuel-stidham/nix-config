@@ -115,7 +115,7 @@ in
   # aarch64-darwin and applies this module too, and the whole temurin set there
   # is Linux-only. Jupyter also reads a different data directory on darwin
   # (~/Library/Jupyter), so this path would be wrong there even if it evaluated.
-  home.file = lib.mkIf pkgs.stdenv.isLinux ({
+  home.file = lib.mkIf pkgs.stdenv.hostPlatform.isLinux ({
     ".local/share/jupyter/kernels/rapaio-jupyter-kernel/kernel.json".source =
       rjkKernel;
   } // xcppKernelFiles);

@@ -46,9 +46,9 @@ let
   };
 in
 {
-  home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.lego ];
+  home.packages = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.lego ];
 
-  systemd.user.services.home-certs = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services.home-certs = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit.Description = "Renew the *.home.samuelstidham.me certificate";
     Service = {
       Type = "oneshot";
@@ -64,7 +64,7 @@ in
     };
   };
 
-  systemd.user.timers.home-certs = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.timers.home-certs = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit.Description = "Daily renewal check for *.home.samuelstidham.me";
     Timer = {
       OnCalendar = "*-*-* 04:30:00";

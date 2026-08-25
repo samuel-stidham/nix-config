@@ -61,13 +61,29 @@ plain process-compose process:
 ```nix
 settings.processes.meilisearch.command = ''
   meilisearch --db-path ~/.local/share/dev-services/meilisearch \
-              --http-addr 127.0.0.1:7700
+              --http-addr 127.0.0.1:7700 \
+              --upgrade-db
 '';
 ```
 
 So it has no services-flake health check or init step, and its port (**7700**) is
 set directly in the command rather than through a module option. If it needs
 tuning, edit the command, not a `services.*` block.
+
+**`--upgrade-db` is load bearing. Do not drop it while tuning the command.**
+Meilisearch refuses a database written by an older build and exits 1 before it
+binds a port. Without the flag, a routine nixpkgs bump takes the service down.
+That happened on 2026-07-18 at 1.48.2 and again on 2026-08-25 at 1.49.0, so
+treat it as certain on every bump rather than as bad luck.
+
+It fails silently, which is why it earns the warning. process-compose restarts
+the process, it exits 1 each time, and the reason never reaches you. Both stacks
+also default to the same log file, `/tmp/process-compose-$USER.log`, so
+`nix run .#sites` and `nix run .#services` overwrite each other's lines.
+
+The upgrade is one way. There is no downgrade, so a bad migration costs the
+index. Copy the directory before a large jump. The convention already in
+`~/.local/share/dev-services` is `meilisearch.v<version>.bak.<timestamp>`.
 
 > A `Completed` status in the process list is not a failure. `postgres-init` is
 > supposed to run once and exit. The header count (`5/10`) includes those.

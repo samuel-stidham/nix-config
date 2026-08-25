@@ -4,16 +4,21 @@
 # ~/Code/personal-projects/language-specific. Nix owns these and they lead on
 # PATH. Ubuntu's own gcc and clang stay untouched for the system layer.
 #
-# Attributes confirmed against github:NixOS/nixpkgs/nixos-unstable on 2026-07-04.
+# Attributes confirmed against github:NixOS/nixpkgs/nixos-unstable on 2026-08-25.
 # The resolved versions are stated inline below, per toolchain. There is no
 # .agents/languages.md. It was cited here but never written.
 
 let
   # Step 6: latest gcc and clang/llvm from Nix, pinned by version. These lead on
   # PATH for dev work. Ubuntu's gcc 13 and its apt llvm stay for the system.
-  # Confirmed newest on the channel: gcc16 is 16.1.0, llvmPackages_22.clang is
-  # 22.1.8. You chose the latest. Drop to gcc15 (15.2.0) or llvmPackages_21
-  # (clang 21.1.8) here if a newer compiler ever breaks a build.
+  # Confirmed newest on the channel: gcc16 is 16.2.0, llvmPackages_22.clang is
+  # 22.1.8. Drop to gcc15 (15.3.0) or llvmPackages_21 (clang 21.1.8) here if a
+  # newer compiler ever breaks a build.
+  #
+  # llvmPackages_23 EXISTS ON THE CHANNEL AND IS DELIBERATELY NOT TAKEN. Its
+  # clang reports 23.1.0-rc1, a release candidate rather than a release. Nothing
+  # here needs a clang 23 feature, so taking it would only buy a compiler that
+  # can still change under a working build. Move once the rc suffix is gone.
   gccPinned = pkgs.gcc16;
   llvmPinned = pkgs.llvmPackages_22;
 
@@ -59,7 +64,7 @@ in
     gperf
     ccache
     meson       # modern build system, confirmed 1.10.2
-    go-task     # the `task` runner, confirmed 3.48.0
+    go-task     # the `task` runner, confirmed 3.52.0
     bazel       # confirmed 7.6.0
 
     # C/C++ analysis. valgrind is dynamic (memcheck, helgrind, cachegrind,
@@ -72,15 +77,15 @@ in
     include-what-you-use    # header hygiene (iwyu), confirmed 0.26
     flawfinder              # pattern-based C/C++ security scanner, confirmed 2.0.20
 
-    # Go (go-projects, wails-projects). Confirmed 1.26.4. Dev tools from ~/go/bin.
+    # Go (go-projects, wails-projects). Confirmed 1.26.5. Dev tools from ~/go/bin.
     go
     gopls
-    delve             # dlv debugger, confirmed 1.26.3
-    golangci-lint     # confirmed 2.12.2
-    gofumpt           # confirmed 0.10.0
-    go-tools          # staticcheck, confirmed 2026.1
-    gosec             # confirmed 2.27.1
-    govulncheck       # confirmed 1.5.0
+    delve             # dlv debugger, confirmed 1.27.1
+    golangci-lint     # confirmed 2.13.1
+    gofumpt           # confirmed 0.11.0
+    go-tools          # staticcheck, confirmed 2026.2
+    gosec             # confirmed 2.28.0
+    govulncheck       # confirmed 1.7.0
     gotests           # confirmed 1.9.0
     # gci and impl were `go install` binaries in ~/go/bin. Both are in nixpkgs, so
     # they come from the store now and stay reproducible. goplay, glyphs, meteor
@@ -121,14 +126,15 @@ in
     shards
 
     # Elixir and Erlang. No project folder, but both are installed and used.
-    # Confirmed elixir 1.18.4 on erlang OTP 28.5.0.2. The top-level attrs are
+    # Confirmed elixir 1.18.4 on erlang OTP 28.5.0.5. The top-level attrs are
     # deprecated, so use the beamPackages set.
     beamPackages.elixir
     beamPackages.erlang
 
     # Clojure. sdkman managed leiningen, which means you use Clojure. Confirmed
-    # clojure 1.12.5 and leiningen 2.12.0. Both ride on the default JDK from
-    # jdks.nix. babashka is the fast-start scripting runtime, added as a bonus.
+    # clojure 1.12.5.1664 and leiningen 2.12.0. Both ride on the default JDK
+    # from jdks.nix. babashka is the fast-start scripting runtime, added as a
+    # bonus.
     clojure
     leiningen
     babashka
@@ -152,14 +158,40 @@ in
     haskell-language-server
     stack
 
-    # Julia. Was juliaup at ~/.juliaup. Confirmed julia-bin 1.12.6. julia-bin is
+    # Julia. Was juliaup at ~/.juliaup. Confirmed julia-bin 1.12.7. julia-bin is
     # the official binary, which avoids a long source build.
     julia-bin
 
     # JavaScript and TypeScript runtimes.
-    nodejs_24   # node-projects, electron-projects, tauri, wails. Replaces nvm.
-    bun         # bun-projects. Replaces the ~/.bun installer.
-    deno        # deno-projects. Replaces the ~/.deno installer.
+
+    # node-projects, electron-projects, tauri, wails. Replaces nvm. Confirmed
+    # 24.19.0, which is the newest 24.x published on nodejs.org/dist.
+    #
+    # 24 AND NOT 26, THOUGH nodejs_26 IS ON THE CHANNEL AT 26.7.0. This line
+    # tracks the Active LTS, not the newest major. The nodejs/Release
+    # schedule.json puts 24 in Active LTS from 2025-10-28 until 2026-10-20.
+    # 26 does not enter LTS until 2026-10-28. Until that date 26 is Current,
+    # which is a weaker promise than this machine wants. Move to nodejs_26
+    # after 2026-10-28 and not before.
+    nodejs_24
+
+    # bun-projects. Replaces the ~/.bun installer. 1.4.0, and 1.4.0 is the
+    # newest release upstream. It arrives through the overlay in flake.nix,
+    # because nixpkgs is still on 1.3.13 on master. Read the overlay comment
+    # before touching this.
+    bun
+
+    # deno-projects. Replaces the ~/.deno installer. 2.9.5, which is the
+    # newest release upstream. It arrives through denoOverlay in flake.nix,
+    # because nixpkgs still packages 2.9.4 on master.
+    #
+    # That overlay does NOT bump the nixpkgs package the way the bun one does.
+    # It replaces the source build with upstream's official binary, and the
+    # reason is written out in full beside it. Read that before touching this,
+    # because it is the one place this repo takes a binary over a nixpkgs
+    # build, and it costs the denort output.
+    deno
+
     typescript
 
     # PHP 8.5 (php-projects, laravel-projects, symfony-projects, nativephp).
@@ -174,8 +206,8 @@ in
     ruby
 
     # C# and .NET (csharp-projects). Run 8, 9, and 10 side by side, matching the
-    # three SDKs the apt backports PPA installed. Confirmed 8.0.422, 9.0.315,
-    # and 10.0.301. combinePackages puts all three under one dotnet root.
+    # three SDKs the apt backports PPA installed. Confirmed 8.0.424, 9.0.317,
+    # and 10.0.400. combinePackages puts all three under one dotnet root.
     (with dotnetCorePackages; combinePackages [
       sdk_8_0
       sdk_9_0

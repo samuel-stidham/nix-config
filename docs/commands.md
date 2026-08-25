@@ -208,4 +208,6 @@ There are also 38 aliases and abbreviations in `fish/aliases.fish`.
 | `homeConfigurations."samuelstidham@aarch64-darwin"` | The Mac, scaffolded. |
 | `packages.<system>.services` | The dev services stack. |
 | `packages.<system>.sites` | The `*.test` web stack. |
-| `packages.<system>.nixGL` / `.nixGLNvidia` | The GL wrappers. |
+| `legacyPackages.<system>.nixGL` / `.nixGLNvidia` | The GL wrappers. Under `legacyPackages`, NOT `packages`, so `nix flake check` does not choke on nixGL's impurity. `nix run` finds them by the short name anyway. |
+
+The flake exports no `overlays` output. `nix eval .#overlays` returns an empty set. Two overlays do exist, `bunOverlay` and `denoOverlay`, but they are internal `let` bindings applied only where `mkHome` imports nixpkgs. So they change what `bun` and `deno` resolve to inside the home configurations, and nothing outside them. Both are temporary and carry the condition for their own deletion in the comment above each one.

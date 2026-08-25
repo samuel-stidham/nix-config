@@ -23,9 +23,10 @@
 #    unconditionally. On darwin, where flake.nix applies this same home.nix, that
 #    is a dead steam.desktop and a dead fish function pointing at /usr/bin/steam,
 #    a path macOS does not have. Nothing crashed, so nobody noticed. The whole
-#    attrset is now wrapped in lib.mkIf pkgs.stdenv.isLinux, matching the sibling
-#    modules home/syncthing.nix and home/btrfs-scrub.nix. That is why the module
-#    signature had to widen from { ... } to { lib, pkgs, ... }.
+#    attrset is now wrapped in lib.mkIf pkgs.stdenv.hostPlatform.isLinux,
+#    matching the sibling modules home/syncthing.nix and home/btrfs-scrub.nix.
+#    That is why the module signature had to widen from { ... } to
+#    { lib, pkgs, ... }.
 #
 # 2. HARDCODED /usr/bin/steam. That path is correct on debian (steam-installer),
 #    fedora (steam from RPM Fusion) and openSUSE (steam from non-oss). It does NOT
@@ -87,7 +88,7 @@ let
 
   steamExec = args: "${steamLaunch} ${args}";
 in
-lib.mkIf pkgs.stdenv.isLinux {
+lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
   # Override the system steam.desktop with a clean-PATH launcher. This wins over
   # /usr/share/applications/steam.desktop because ~/.local/share is earlier in
   # XDG_DATA_DIRS. The right-click actions are reproduced so nothing is lost;

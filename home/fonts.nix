@@ -2,7 +2,7 @@
 
 # Nerd Fonts. These are the patched fonts already installed on the machine,
 # brought into Nix so they are reproducible. Confirmed on nixpkgs-unstable on
-# 2026-07-05. MonoLisa is not here, since it is a paid font with no nixpkgs
+# 2026-08-25. MonoLisa is not here, since it is a paid font with no nixpkgs
 # package. It stays outside Nix. There is no .agents/outside-nix.md recording it,
 # so this comment is the record.
 

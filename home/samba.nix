@@ -110,9 +110,9 @@ in
   # smbclient and smbpasswd on PATH. smbpasswd is needed once by hand to set the
   # samba password, and smbclient is how you check the server from this side
   # without involving the Mac.
-  home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.samba ];
+  home.packages = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.samba ];
 
-  systemd.user.services.smbd = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services.smbd = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit = {
       Description = "smbd: Time Machine target for the MacBook";
       # No After=network.target. This is a USER unit and network.target lives in
@@ -142,7 +142,7 @@ in
   # no longer answers, and Time Machine reports a failure against a destination
   # that looks present. Stopping together makes the destination simply disappear,
   # which is the honest signal.
-  systemd.user.services.samba-mdns = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services.samba-mdns = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit = {
       Description = "Advertise the ${shareName} share to macOS over mDNS";
       BindsTo = [ "smbd.service" ];

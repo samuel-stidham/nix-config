@@ -54,7 +54,7 @@ in
   # Linux only. This repo is applied here and nowhere else, see the note in
   # flake.nix about the darwin config being kept but unused. The Mac's side of
   # Syncthing is configured through its own GUI.
-  services.syncthing = lib.mkIf pkgs.stdenv.isLinux {
+  services.syncthing = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     enable = true;
 
     overrideDevices = true;

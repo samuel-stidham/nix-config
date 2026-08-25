@@ -321,9 +321,15 @@ must hardcode. It should hardcode **once**, in one binding, not eight times.
 
 ### Platform guards
 
-`lib.optionals pkgs.stdenv.isLinux [ ... ]` for `home.packages`.
-`lib.mkIf pkgs.stdenv.isLinux { ... }` for `home.file`, `systemd.user.*`,
-`services.*`.
+`lib.optionals pkgs.stdenv.hostPlatform.isLinux [ ... ]` for `home.packages`.
+`lib.mkIf pkgs.stdenv.hostPlatform.isLinux { ... }` for `home.file`,
+`systemd.user.*`, `services.*`.
+
+It is `hostPlatform` and not the bare `stdenv.isLinux` this repo used until
+2026-08-25. nixpkgs deprecated the short aliases, so every eval printed
+`stdenv.isLinux is deprecated, use stdenv.hostPlatform.isLinux instead` twice
+before anything useful. The rename is semantics free. The activation package
+evaluated to the same store path either way.
 
 The flake declares `aarch64-darwin` and applies the same `home.nix`. Darwin is
 scaffolded but unused. Do not delete darwin code paths. Do not chase darwin eval

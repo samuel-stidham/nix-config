@@ -91,7 +91,7 @@ let
   };
 in
 {
-  home.packages = lib.optionals pkgs.stdenv.isLinux [ pkgs.msmtp ];
+  home.packages = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.msmtp ];
 
   # msmtp, pointed at the same Gmail account Forgejo already mails through.
   #
@@ -99,7 +99,7 @@ in
   # at send time, so no plaintext credential is ever written to disk. That makes
   # this file a reference, not a secret, which is why it is tracked in this repo.
   # See .agents/rules.md.
-  home.file.".msmtprc" = lib.mkIf pkgs.stdenv.isLinux {
+  home.file.".msmtprc" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     # 0600 is not optional, msmtp refuses to run on a world readable config.
     executable = false;
     text = ''
@@ -135,7 +135,7 @@ in
   # label rather than a path. The description reads "Scrub StoragePrime ...", a
   # label the script resolves at runtime, not the mountpoint. A binding named
   # mount holding a label would lie about what it carries.
-  systemd.user.services = lib.mkIf pkgs.stdenv.isLinux (
+  systemd.user.services = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (
     lib.mapAttrs' (name: label: lib.nameValuePair "btrfs-scrub-${name}" {
       Unit.Description = "Scrub ${label} and mail on failure";
       Service = {
@@ -157,7 +157,7 @@ in
 
   # Same as the services above: the parameter is the drive LABEL, resolved to a
   # mountpoint at runtime, so the description names the label.
-  systemd.user.timers = lib.mkIf pkgs.stdenv.isLinux (
+  systemd.user.timers = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (
     lib.mapAttrs' (name: label: lib.nameValuePair "btrfs-scrub-${name}" {
       Unit.Description = "Monthly btrfs scrub of ${label}";
       Timer = {

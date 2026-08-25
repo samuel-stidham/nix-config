@@ -38,10 +38,216 @@
       # sense, so they live under `flake`.
       flake =
         let
+          # TEMPORARY, DELETE when nixos-unstable ships bun >= 1.4.0. Check
+          # after a flake update with:
+          #
+          #   nix eval nixpkgs#legacyPackages.x86_64-linux.bun.version
+          #
+          # Bun 1.4.0 released upstream on 2026-08-20. As of 2026-08-25 nixpkgs
+          # still packages 1.3.13 on master and unstable both. The bump PR
+          # "bun: 1.3.13 -> 1.4.0" is open and unmerged, so the channel is days
+          # away at best.
+          #
+          # RECHECKED 2026-08-25. The LATEST file on bun's main branch reads
+          # 1.4.0 and its releases feed lists no newer tag, so this overlay is
+          # at the newest release rather than merely ahead of the channel. Check
+          # both again before bumping the version below.
+          #
+          # The obvious fix is `bun upgrade`, and it cannot work here. This bun
+          # lives in the read-only nix store, so the upgrader cannot replace its
+          # own binary. Its fallback installs to ~/.bun, the exact installer
+          # home/languages.nix:161 exists to REPLACE. That path drifts outside
+          # the machine definition and wins the PATH race silently.
+          #
+          # So this overlay bumps the same package instead. nixpkgs' bun reads
+          # its src from passthru.sources, a per-system fetchurl set over the
+          # official release zips. Swapping version plus sources is the whole
+          # bump, because the finalAttrs fixpoint recomputes src from them. The
+          # nixpkgs bump PR performs the identical edit.
+          #
+          # Only the two systems this flake declares are listed. Any other
+          # system hits the package's own "Unsupported system" throw, loud on
+          # purpose. Hashes came from `nix store prefetch-file` on each zip.
+          #
+          # Verified: the rebuilt store binary prints "1.4.0" from `bun
+          # --version` on x86_64-linux. Unverified on aarch64-darwin, no such
+          # machine available.
+          bunOverlay = final: prev: {
+            bun = prev.bun.overrideAttrs (old: {
+              version = "1.4.0";
+              # THE WARNING THIS FLAG SILENCES IS A FALSE POSITIVE. Since the
+              # nixpkgs bump on 2026-08-23 every eval of this flake printed:
+              #
+              #   evaluation warning: bun-1.3.13 was overridden with `version`
+              #   but not `src` at .../flake.nix:72:15.
+              #
+              # The check lives in pkgs/stdenv/generic/make-derivation.nix:268
+              # and is purely syntactic. It fires when the override set has a
+              # `version` key and no `src` key. It never inspects what the
+              # override actually did.
+              #
+              # This overlay does move the source. It moves it one level down,
+              # through passthru.sources, which is exactly where bun's own `src`
+              # attribute reads from. The check cannot see through that.
+              #
+              # Adding a literal `src` here is the obvious fix and it is worse.
+              # An explicit `src` beats bun's per-system passthru.sources lookup
+              # for EVERY system at once, so aarch64-darwin would then unpack the
+              # linux zip. This flag is nixpkgs' own documented opt-out and
+              # pkgs/stdenv/darwin/default.nix:396 uses it for the same reason.
+              __intentionallyOverridingVersion = true;
+              passthru = old.passthru // {
+                sources = {
+                  # NOT the zip nixpkgs itself uses. nixpkgs points x86_64-linux
+                  # at bun-linux-x64-baseline.zip, the build bun ships for CPUs
+                  # without AVX2. This box is a Ryzen 9 9950X3D and /proc/cpuinfo
+                  # lists avx2 and avx512f, so the plain build runs and is the one
+                  # bun intends for this hardware. Keep the difference in mind if
+                  # this overlay is ever copied to an older machine.
+                  "x86_64-linux" = prev.fetchurl {
+                    url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.0/bun-linux-x64.zip";
+                    hash = "sha256-LQP7X7g6yLVnrKCigbLOGhoZ1Ij1bClo2Iw/Jekv5FI=";
+                  };
+                  "aarch64-darwin" = prev.fetchurl {
+                    url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.0/bun-darwin-aarch64.zip";
+                    hash = "sha256-xmnpf2Fk4cluBwF0jbmN+ndJKQjL2DlMdVcTSnNd44E=";
+                  };
+                };
+              };
+            });
+          };
+
+          # TEMPORARY, DELETE when nixos-unstable ships deno >= 2.9.5. Check
+          # after a flake update with:
+          #
+          #   nix eval nixpkgs#legacyPackages.x86_64-linux.deno.version
+          #
+          # deno 2.9.5 released upstream on 2026-08-06. nixpkgs still packages
+          # 2.9.4 on master on 2026-08-25, three weeks later, so this is not a
+          # channel that is merely a few days behind.
+          #
+          # THIS OVERLAY REPLACES THE PACKAGE RATHER THAN BUMPING IT, and that
+          # is the whole difference from bunOverlay above. bun's nixpkgs
+          # package IS the official zip, so bumping version plus sources is a
+          # faithful bump. deno's is a rustPlatform.buildRustPackage from git,
+          # standing on librusty_v8, which nixpkgs builds from SOURCE under
+          # V8_FROM_SOURCE=1 with gn and ninja and four nixpkgs-local patches.
+          #
+          # The faithful bump is the obvious fix and it is not affordable here.
+          # 2.9.5 moved v8 behind a new deno_v8 facade crate, and that facade
+          # pins rusty_v8 150.4.0 where 2.9.4 pinned 150.2.0. So it needs
+          # librusty_v8 rebuilt at a new version, those four patches
+          # re-verified against a tree they were never written for, and a full
+          # V8 compile with no cache hit. That is exactly the work nixpkgs has
+          # not finished, which is why the bump has sat for three weeks.
+          #
+          # WHAT THE TRADE COSTS. nixpkgs' deno has three outputs: out, denort
+          # and libdenort. This has only the binary. `deno compile` needs
+          # denort, so with this overlay it fetches denort into ~/.cache/deno
+          # at first use, the way deno behaves for everyone off Nix. That is a
+          # network fetch where nixpkgs gave a store path. Nothing else in this
+          # repo touches denort. The nixpkgs test suite and its patches are
+          # also gone, so this is upstream's binary, unpatched. Shell
+          # completions are NOT lost. They are regenerated from the binary
+          # below, because dropping them was this overlay's first bug.
+          #
+          # Only the two systems this flake declares are listed, and anything
+          # else throws rather than silently falling back to 2.9.4. A silent
+          # fallback is the failure this repo keeps writing tombstones about.
+          #
+          # Verified 2026-08-25: the built binary prints "deno 2.9.5 (stable,
+          # release, x86_64-unknown-linux-gnu)" and `deno eval` reports v8
+          # 15.0.245.2-rusty. dl.deno.land/release-latest.txt returns v2.9.5.
+          # Unverified on aarch64-darwin, no such machine available.
+          denoOverlay = final: prev: {
+            deno = prev.stdenvNoCC.mkDerivation (finalAttrs: {
+              pname = "deno";
+              version = "2.9.5";
+
+              src =
+                finalAttrs.passthru.sources.${prev.stdenvNoCC.hostPlatform.system}
+                  or (throw "deno overlay: unsupported system ${prev.stdenvNoCC.hostPlatform.system}");
+
+              # autoPatchelfHook is Linux only, and the darwin binary needs no
+              # interpreter rewrite, so the hook is guarded rather than the
+              # whole overlay. cc.cc.lib supplies libgcc_s, the one shared
+              # object the linux binary wants that is not libc.
+              nativeBuildInputs = [
+                prev.unzip
+                prev.installShellFiles
+              ]
+              ++ prev.lib.optionals prev.stdenvNoCC.hostPlatform.isLinux [
+                prev.autoPatchelfHook
+              ];
+              buildInputs =
+                prev.lib.optionals prev.stdenvNoCC.hostPlatform.isLinux [
+                  prev.stdenv.cc.cc.lib
+                ];
+
+              dontConfigure = true;
+              dontBuild = true;
+
+              # The zip holds a bare `deno` at its root, so the default
+              # unpacker's srcRoot guessing has nothing to descend into.
+              unpackPhase = ''
+                runHook preUnpack
+                unzip "$src"
+                runHook postUnpack
+              '';
+
+              installPhase = ''
+                runHook preInstall
+                install -Dm755 ./deno "$out/bin/deno"
+                runHook postInstall
+              '';
+
+              # COMPLETIONS IN postPatchelf, NOT installPhase. nixpkgs' deno
+              # ships bash, zsh and fish completions, and the first draft of
+              # this overlay silently dropped all three. The empty output was
+              # visible only as a zero-byte deno-2.9.5-fish-completions in the
+              # closure, which is the quiet kind of regression.
+              #
+              # Regenerating them means RUNNING the binary, and on linux the
+              # binary cannot run until autoPatchelfHook has rewritten its
+              # interpreter. That hook lands in fixup, after installPhase, so
+              # generating there fails. postPhases puts this after it instead.
+              # nixpkgs' own bun package solves the identical problem the
+              # identical way, see pkgs/by-name/bu/bun/package.nix.
+              #
+              # The canExecute guard matters for a cross build, where the host
+              # binary cannot run on the builder. This flake never crosses, but
+              # a silent wrong answer there is worth one conditional.
+              postPhases = [ "postPatchelf" ];
+              postPatchelf = prev.lib.optionalString
+                (prev.stdenvNoCC.buildPlatform.canExecute prev.stdenvNoCC.hostPlatform) ''
+                  installShellCompletion --cmd deno \
+                    --bash <("$out/bin/deno" completions bash) \
+                    --zsh <("$out/bin/deno" completions zsh) \
+                    --fish <("$out/bin/deno" completions fish)
+                '';
+
+              passthru.sources = {
+                "x86_64-linux" = prev.fetchurl {
+                  url = "https://github.com/denoland/deno/releases/download/v2.9.5/deno-x86_64-unknown-linux-gnu.zip";
+                  hash = "sha256-iwEKOxpKAYimfNuKeic0iypQGveK7H/HTyrOFnNo1TA=";
+                };
+                "aarch64-darwin" = prev.fetchurl {
+                  url = "https://github.com/denoland/deno/releases/download/v2.9.5/deno-aarch64-apple-darwin.zip";
+                  hash = "sha256-t5aq3RMfaTBWDB7gQM8Nb1OTP7uYdGTp/0a9fqSDBhU=";
+                };
+              };
+
+              meta = prev.deno.meta // {
+                mainProgram = "deno";
+              };
+            });
+          };
+
           mkHome = system: home-manager.lib.homeManagerConfiguration {
             pkgs = import nixpkgs {
               inherit system;
               config.allowUnfree = true;
+              overlays = [ bunOverlay denoOverlay ];
             };
             # `self` + `system` let home modules reach the flake's own outputs
             # (home/graphics.nix installs self.legacyPackages.${system}.nixGLNvidia,
@@ -82,16 +288,19 @@
           # root, and the flake still evaluates. Forcing `--impure` on every
           # consumer to dodge that is a worse trade than one honest literal.
           #
-          # Branching on `pkgs.stdenv.isDarwin` beats hardcoding the linux path,
-          # because `systems` above declares aarch64-darwin and macOS homes live
-          # under /Users. This is asking the platform instead of maintaining a
-          # list. The same expression already lives at home/home.nix:29.
+          # Branching on `pkgs.stdenv.hostPlatform.isDarwin` beats hardcoding the
+          # linux path, because `systems` above declares aarch64-darwin and macOS
+          # homes live under /Users. This is asking the platform instead of
+          # maintaining a list. The same expression already lives at
+          # home/home.nix:29.
           #
           # It hardcodes ONCE. Six dataDirs below used to re-spell this prefix by
           # hand while runDir sat here unused. That drifts silently: change this
           # line and the php-fpm socket moves while the databases stay behind.
           homeDir =
-            if pkgs.stdenv.isDarwin then "/Users/samuelstidham" else "/home/samuelstidham";
+            if pkgs.stdenv.hostPlatform.isDarwin
+            then "/Users/samuelstidham"
+            else "/home/samuelstidham";
           # KEEP IN SYNC with home/web.nix's runDir. These are two independent
           # bindings for one path, in different eval contexts (perSystem here, a
           # home module there) that cannot share a `let`. php-fpm's listen socket
@@ -295,10 +504,42 @@
 
           # meilisearch is not a services-flake service, so run it as a plain
           # process-compose process with its data under ~/.local/share.
+          #
+          # --upgrade-db IS LOAD BEARING. Without it a nixpkgs bump takes
+          # meilisearch down. The engine refuses a database written by an older
+          # build, and exits 1 before it binds a port:
+          #
+          #   Your database version (1.49.0) is incompatible with your current
+          #   engine version (1.53.1).
+          #
+          # This happened on 2026-07-18 at 1.48.2 and again on 2026-08-25 at
+          # 1.49.0. Treat it as certain on every bump rather than as bad luck.
+          #
+          # IT FAILS SILENTLY, which is why it earns this much comment. The
+          # symptom is that meilisearch is simply not there. process-compose
+          # restarts it, it exits 1 each time, and the reason never reaches the
+          # operator. Both stacks also default to the same log file,
+          # /tmp/process-compose-$USER.log, so `nix run .#sites` and
+          # `nix run .#services` overwrite each other's lines. The meilisearch
+          # error was absent from that file the whole time the loop ran.
+          #
+          # Pinning meilisearch to whatever version wrote the database is the
+          # obvious fix and it is worse. It freezes one package against the rest
+          # of the flake, and someone has to notice and undo it later. The data
+          # here is a dev index that any app can rebuild, 136K on 2026-08-25.
+          #
+          # THE TRADE: the upgrade is one way. There is no downgrade, so a bad
+          # migration costs the index. Copy the directory before a large jump.
+          # The convention already in ~/.local/share/dev-services is
+          # meilisearch.v<version>.bak.<timestamp>.
+          #
+          # Verified: 1.53.1 with this flag migrated the 1.49.0 database, and
+          # /health then returned {"status":"available"} on 127.0.0.1:7700.
           settings.processes.meilisearch.command = ''
             ${pkgs.meilisearch}/bin/meilisearch \
               --db-path ${runDir}/meilisearch \
-              --http-addr 127.0.0.1:7700
+              --http-addr 127.0.0.1:7700 \
+              --upgrade-db
           '';
         };
       };

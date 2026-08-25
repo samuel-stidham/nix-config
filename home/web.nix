@@ -253,7 +253,7 @@ let
   '';
 in
 {
-  systemd.user.services.nginx = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services.nginx = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit = {
       Description = "nginx: *.test and *.home.samuelstidham.me";
       # No After=network.target: this is a USER unit, and network.target lives in

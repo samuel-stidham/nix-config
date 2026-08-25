@@ -46,10 +46,10 @@ in
     # deliberately separate from the coding secret chain: safetybox holds the
     # coding secrets and passage holds only safetybox's passphrase, so no repo and
     # no automation ever touches 1Password or the `op` CLI. KeePassXC backs up
-    # recovery codes, NOT this identity. Confirmed passage 1.7.4 and age 1.3.1.
+    # recovery codes, NOT this identity. Confirmed passage 1.7.4a2 and age 1.3.1.
     passage
     age
-    # Secret scanners, global. Confirmed gitleaks 8.30.1 and trufflehog 3.95.7.
+    # Secret scanners, global. Confirmed gitleaks 8.30.1 and trufflehog 3.97.0.
     gitleaks
     trufflehog
   ]);

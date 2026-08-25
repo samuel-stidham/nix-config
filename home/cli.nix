@@ -2,7 +2,7 @@
 
 # Command-line tooling that used to come from apt or from cargo installs. Nix
 # owns it now, so the apt and cargo copies are retired during purge-lang-layers.
-# Confirmed on nixpkgs-unstable.
+# Confirmed on nixpkgs-unstable on 2026-08-25.
 #
 # Note. bat, eza, zoxide, starship, atuin, direnv, fzf, and btop are NOT here.
 # They are enabled through their home-manager modules in theme.nix, so they can
@@ -64,13 +64,13 @@
     pay-respects # command correction, already initialized in fish, confirmed 0.8.8
 
     # Databases. sqlite provides sqlite3. turso-cli is the Turso db client.
-    sqlite      # confirmed 3.51.2, provides sqlite3
-    turso-cli   # confirmed 1.0.29
-    duckdb      # was the ~/.duckdb install, confirmed 1.5.2
+    sqlite      # confirmed 3.53.3, provides sqlite3
+    turso-cli   # confirmed 1.0.31
+    duckdb      # was the ~/.duckdb install, confirmed 1.5.5
 
     # Charm.land tools you use. All confirmed on the channel.
-    gum         # 0.17.0, shell script UI
-    glow        # 2.1.2, markdown reader
+    gum         # 2.0.0, shell script UI
+    glow        # 3.0.0, markdown reader
     vhs         # 0.11.0, terminal gif recorder
     freeze      # 1.3, code screenshotter
 

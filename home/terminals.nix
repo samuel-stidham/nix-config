@@ -79,7 +79,7 @@ in
 
   # Zellij, the one terminal multiplexer. Panes, tabs, floating, and stacked
   # resize are all built in, which is where several AI agent sessions run side by
-  # side. Confirmed 0.44.3. It ships Catppuccin themes built in, so the Frappe
+  # side. Confirmed 0.45.0. It ships Catppuccin themes built in, so the Frappe
   # theme is just a name, no external module needed. (rmux was dropped: it is a
   # standalone tmux-compatible multiplexer, not a layer over zellij, so it just
   # duplicated zellij's job.)
@@ -139,5 +139,7 @@ in
   # and zellij is enabled unguarded above, so it builds and runs on darwin too. It
   # is in home.packages, not merely referenced by initial-command, because the
   # `servers` fish function calls it by name from PATH.
-  home.packages = [ devSession ] ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.ghostty ];
+  home.packages =
+    [ devSession ]
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.ghostty ];
 }
