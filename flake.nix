@@ -117,137 +117,31 @@
             });
           };
 
-          # TEMPORARY, DELETE when nixos-unstable ships deno >= 2.9.5. Check
-          # after a flake update with:
+          # DENO OVERLAY REMOVED 2026-09-07, because nixpkgs caught up.
           #
-          #   nix eval nixpkgs#legacyPackages.x86_64-linux.deno.version
+          # An overlay lived here from 2026-08-25. nixpkgs packaged deno 2.9.4
+          # three weeks after 2.9.5 shipped upstream, so this repo carried its
+          # own. It replaced the package rather than bumping it. 2.9.5 moved v8
+          # behind a deno_v8 facade pinning rusty_v8 150.4.0, and nixpkgs builds
+          # librusty_v8 from source with four local patches, so a faithful bump
+          # was not affordable.
           #
-          # deno 2.9.5 released upstream on 2026-08-06. nixpkgs still packages
-          # 2.9.4 on master on 2026-08-25, three weeks later, so this is not a
-          # channel that is merely a few days behind.
+          # That trade cost the denort and libdenort outputs, the nixpkgs
+          # patches and the test suite. nixpkgs ships 2.9.5 itself now, so the
+          # cost buys nothing. Removing the overlay restores all three outputs.
           #
-          # THIS OVERLAY REPLACES THE PACKAGE RATHER THAN BUMPING IT, and that
-          # is the whole difference from bunOverlay above. bun's nixpkgs
-          # package IS the official zip, so bumping version plus sources is a
-          # faithful bump. deno's is a rustPlatform.buildRustPackage from git,
-          # standing on librusty_v8, which nixpkgs builds from SOURCE under
-          # V8_FROM_SOURCE=1 with gn and ninja and four nixpkgs-local patches.
+          # Verified 2026-09-07 after the lock bump. deno.version in the locked
+          # nixpkgs reads 2.9.5, which is exactly the delete condition the old
+          # comment wrote down.
           #
-          # The faithful bump is the obvious fix and it is not affordable here.
-          # 2.9.5 moved v8 behind a new deno_v8 facade crate, and that facade
-          # pins rusty_v8 150.4.0 where 2.9.4 pinned 150.2.0. So it needs
-          # librusty_v8 rebuilt at a new version, those four patches
-          # re-verified against a tree they were never written for, and a full
-          # V8 compile with no cache hit. That is exactly the work nixpkgs has
-          # not finished, which is why the bump has sat for three weeks.
-          #
-          # WHAT THE TRADE COSTS. nixpkgs' deno has three outputs: out, denort
-          # and libdenort. This has only the binary. `deno compile` needs
-          # denort, so with this overlay it fetches denort into ~/.cache/deno
-          # at first use, the way deno behaves for everyone off Nix. That is a
-          # network fetch where nixpkgs gave a store path. Nothing else in this
-          # repo touches denort. The nixpkgs test suite and its patches are
-          # also gone, so this is upstream's binary, unpatched. Shell
-          # completions are NOT lost. They are regenerated from the binary
-          # below, because dropping them was this overlay's first bug.
-          #
-          # Only the two systems this flake declares are listed, and anything
-          # else throws rather than silently falling back to 2.9.4. A silent
-          # fallback is the failure this repo keeps writing tombstones about.
-          #
-          # Verified 2026-08-25: the built binary prints "deno 2.9.5 (stable,
-          # release, x86_64-unknown-linux-gnu)" and `deno eval` reports v8
-          # 15.0.245.2-rusty. dl.deno.land/release-latest.txt returns v2.9.5.
-          # Unverified on aarch64-darwin, no such machine available.
-          denoOverlay = final: prev: {
-            deno = prev.stdenvNoCC.mkDerivation (finalAttrs: {
-              pname = "deno";
-              version = "2.9.5";
-
-              src =
-                finalAttrs.passthru.sources.${prev.stdenvNoCC.hostPlatform.system}
-                  or (throw "deno overlay: unsupported system ${prev.stdenvNoCC.hostPlatform.system}");
-
-              # autoPatchelfHook is Linux only, and the darwin binary needs no
-              # interpreter rewrite, so the hook is guarded rather than the
-              # whole overlay. cc.cc.lib supplies libgcc_s, the one shared
-              # object the linux binary wants that is not libc.
-              nativeBuildInputs = [
-                prev.unzip
-                prev.installShellFiles
-              ]
-              ++ prev.lib.optionals prev.stdenvNoCC.hostPlatform.isLinux [
-                prev.autoPatchelfHook
-              ];
-              buildInputs =
-                prev.lib.optionals prev.stdenvNoCC.hostPlatform.isLinux [
-                  prev.stdenv.cc.cc.lib
-                ];
-
-              dontConfigure = true;
-              dontBuild = true;
-
-              # The zip holds a bare `deno` at its root, so the default
-              # unpacker's srcRoot guessing has nothing to descend into.
-              unpackPhase = ''
-                runHook preUnpack
-                unzip "$src"
-                runHook postUnpack
-              '';
-
-              installPhase = ''
-                runHook preInstall
-                install -Dm755 ./deno "$out/bin/deno"
-                runHook postInstall
-              '';
-
-              # COMPLETIONS IN postPatchelf, NOT installPhase. nixpkgs' deno
-              # ships bash, zsh and fish completions, and the first draft of
-              # this overlay silently dropped all three. The empty output was
-              # visible only as a zero-byte deno-2.9.5-fish-completions in the
-              # closure, which is the quiet kind of regression.
-              #
-              # Regenerating them means RUNNING the binary, and on linux the
-              # binary cannot run until autoPatchelfHook has rewritten its
-              # interpreter. That hook lands in fixup, after installPhase, so
-              # generating there fails. postPhases puts this after it instead.
-              # nixpkgs' own bun package solves the identical problem the
-              # identical way, see pkgs/by-name/bu/bun/package.nix.
-              #
-              # The canExecute guard matters for a cross build, where the host
-              # binary cannot run on the builder. This flake never crosses, but
-              # a silent wrong answer there is worth one conditional.
-              postPhases = [ "postPatchelf" ];
-              postPatchelf = prev.lib.optionalString
-                (prev.stdenvNoCC.buildPlatform.canExecute prev.stdenvNoCC.hostPlatform) ''
-                  installShellCompletion --cmd deno \
-                    --bash <("$out/bin/deno" completions bash) \
-                    --zsh <("$out/bin/deno" completions zsh) \
-                    --fish <("$out/bin/deno" completions fish)
-                '';
-
-              passthru.sources = {
-                "x86_64-linux" = prev.fetchurl {
-                  url = "https://github.com/denoland/deno/releases/download/v2.9.5/deno-x86_64-unknown-linux-gnu.zip";
-                  hash = "sha256-iwEKOxpKAYimfNuKeic0iypQGveK7H/HTyrOFnNo1TA=";
-                };
-                "aarch64-darwin" = prev.fetchurl {
-                  url = "https://github.com/denoland/deno/releases/download/v2.9.5/deno-aarch64-apple-darwin.zip";
-                  hash = "sha256-t5aq3RMfaTBWDB7gQM8Nb1OTP7uYdGTp/0a9fqSDBhU=";
-                };
-              };
-
-              meta = prev.deno.meta // {
-                mainProgram = "deno";
-              };
-            });
-          };
+          # bun is NOT in the same position and bunOverlay above stays. nixpkgs
+          # still packages 1.3.13 against upstream 1.4.0.
 
           mkHome = system: home-manager.lib.homeManagerConfiguration {
             pkgs = import nixpkgs {
               inherit system;
               config.allowUnfree = true;
-              overlays = [ bunOverlay denoOverlay ];
+              overlays = [ bunOverlay ];
             };
             # `self` + `system` let home modules reach the flake's own outputs
             # (home/graphics.nix installs self.legacyPackages.${system}.nixGLNvidia,
@@ -398,6 +292,48 @@
         # sat unnoticed for a day. Re-check this pin against
         # `nvidia-smi --query-gpu=driver_version` after any apt run that touches
         # libnvidia-*, and treat it as mandatory after a release upgrade.
+        #
+        # MOVED TO THE 595 PRODUCTION BRANCH ON 2026-09-07, from 580.173.02.
+        #
+        # The driver was picked against two questions rather than against
+        # novelty. Does it build for the running kernel, and does it survive the
+        # move to Ubuntu 26.04? Ubuntu answers the first itself. It ships a
+        # prebuilt signed linux-modules-nvidia-595-open-generic-hwe-24.04 at
+        # 7.0.0-31.31, which is the ABI this box now boots.
+        #
+        # The second question was already answered before it was asked. Ubuntu
+        # 26.04 ships kernel 7.0.0-31, the exact kernel the 24.04 HWE stack had
+        # already delivered here. There is no kernel jump waiting at
+        # do-release-upgrade. resolute carries nvidia-driver-595-open at 595.84,
+        # the same version as noble, so the release upgrade only re-points the
+        # ubuntu suffix and leaves this pin alone.
+        #
+        # WHY NOT 610, WHICH IS NEWER
+        #
+        # 610 is NVIDIA's New Feature Branch and 595 is the Production Branch,
+        # read off nvidia.com/en-us/drivers/unix rather than recalled. New
+        # Feature Branch gets a shorter support window. That is the wrong trade
+        # for a box that sits on an LTS for years. ubuntu-drivers also marks
+        # 595-open recommended for this 5090. Newer was available and was not
+        # the goal.
+        #
+        # TRAP, ON THE APT SIDE. `apt install nvidia-driver-595-open` on its own
+        # pulls in dkms and drops Ubuntu's prebuilt modules, so the module gets
+        # rebuilt locally on every kernel bump for no gain. Name the module
+        # metapackage alongside it to keep the signed prebuilt path.
+        #
+        # ORDER MATTERS AND IS THE OPPOSITE OF THE OBVIOUS ONE. This pin must
+        # not be bumped before the host driver actually changes. Bumping it
+        # first injects 595 userspace against a still-running 580 module and
+        # reproduces the exact mismatch above, only backwards. Switch the host,
+        # reboot, confirm, then edit this.
+        #
+        # Verified 2026-09-07 on this machine after the reboot. nvidia-smi and
+        # /sys/module/nvidia/version both report 595.84. Exactly one nvidia.ko
+        # exists under 7.0.0-31 and it is 595.84, so no 580 module competes at
+        # boot. The pin below was built as nixGLNvidia-595.84 BEFORE the host
+        # switched, which proved the 25.11 nvidia_x11 builder handles 595.84
+        # and left no window where the box had a driver nix could not match.
         legacyPackages.nixGLNvidia = (import "${nixgl}/default.nix" {
           # Built from nixpkgs-nvidia (a stable branch), NOT the unstable `pkgs`
           # above — see the nixpkgs-nvidia input comment for why (the `kernel`
@@ -406,8 +342,8 @@
             inherit system;
             config.allowUnfree = true;
           };
-          nvidiaVersion = "580.173.02";
-          nvidiaHash = "sha256-jY65AB4FqaimY9PV0wT+tk7yhE7hhczf2VJ4aCD0bhs=";
+          nvidiaVersion = "595.84";
+          nvidiaHash = "sha256-mcQE5SExvye8ptoCaNzOPr7cenOrF0BxqZXPGmxeugY=";
         }).nixGLNvidia;
 
         # Web layer for ~/sites/<name>. php-fpm and the .test resolver. Run with
@@ -425,6 +361,28 @@
         # site returns 502, which is the honest answer rather than a refused
         # connection. Forgejo is unaffected.
         process-compose."sites" = {
+          # process-compose's OWN REST API, not a process. It defaults to 8080
+          # and that default is what killed seaweedfs. See the long comment on
+          # services.seaweedfs below for the failure and the second half of the
+          # fix.
+          #
+          # This stack is the one that has an API at all. services-flake passes
+          # --no-server, so `nix run .#services` never binds a port for itself
+          # and the two stacks cannot collide with each other. That asymmetry
+          # is upstream's choice and is not relied on here. Naming the port
+          # explicitly means a future services-flake that drops --no-server
+          # fails at a bind rather than silently stealing this one.
+          #
+          # 8082 is arbitrary and deliberately not adjacent to anything a dev
+          # server picks by default. The point is to leave 8080 free for the
+          # apps in ~/sites, which are the reason this stack exists.
+          #
+          # Verified 2026-08-25: `nix run .#sites` logged "start http server
+          # listening localhost:8082" and bound only 8082. With the services
+          # stack also up, 8080 was reported FREE by ss, which is the point.
+          # `process-compose -p 8082 process list` returned php-fpm and
+          # dnsmasq, so the API is reachable on the new port.
+          cli.environment.PC_PORT_NUM = 8082;
           settings.processes = {
             php-fpm.command = ''
               mkdir -p ${runDir}/php-fpm
@@ -487,16 +445,61 @@
           # and it fails closed. healthz answers 200 while every anonymous
           # request gets 403 AccessDenied (curl, 2026-08-04). Laravel needs
           # credentials that work, so the dev identity above is wired in.
-          # Ports: s3 8333, filer 8888, master 9333, volume 8080. A Laravel
+          # Ports: s3 8333, filer 8888, master 9333, volume 8081. A Laravel
           # .env points at it with AWS_ENDPOINT=http://127.0.0.1:8333,
           # AWS_ACCESS_KEY_ID=dev, AWS_SECRET_ACCESS_KEY=devsecret, and
           # AWS_USE_PATH_STYLE_ENDPOINT=true.
           #
           # Old minio data is left at ~/.local/share/dev-services/minio and
           # is not migrated. Delete it by hand once nothing in it matters.
+          # THE VOLUME SERVER IS OFF 8080 ON PURPOSE, moved 2026-08-25.
+          #
+          # seaweedfs defaults its volume server to 8080 and that port is the
+          # busiest one on a web dev box. process-compose's own REST API also
+          # defaults to 8080, so `nix run .#sites` bound it first and the
+          # volume server died fifteen seconds later, after master, filer and
+          # s3 had already come up:
+          #
+          #   F volume.go:621 Volume server listener error:listen tcp
+          #   127.0.0.1:8080: bind: address already in use
+          #
+          # The whole `weed server` process exits 255 on that, so the working
+          # master and s3 gateway went down with it. process-compose retried
+          # five times, hit max_restarts, and left seaweedfs dead.
+          #
+          # RACE, NOT ORDER. The zellij servers layout starts this stack in the
+          # pane above sites, so "start services first" looks like a fix and is
+          # not one. process-compose binds its API at t=0 while the volume
+          # server binds at t=16s, after the master bootstrap wait. sites wins
+          # every time regardless of which pane launched first.
+          #
+          # Pinning the sites API elsewhere is the other half of this fix and
+          # is done below, but on its own it only hands 8080 to seaweedfs. That
+          # is the same trap one layer down. A `php artisan serve --port=8080`
+          # or a vite dev server would take the port back and break s3 again,
+          # with the same fifteen second delay and the same silence.
+          #
+          # 8081 is seaweedfs's own convention for a second volume server. The
+          # master hands out volume URLs from live heartbeats rather than from
+          # stored state, so nothing on disk records the old port and no
+          # migration is needed. Laravel never talks to 8080 or 8081 directly.
+          # It talks to the s3 gateway on 8333, which resolves volumes through
+          # the master.
+          #
+          # Verified 2026-08-25, both stacks up together in the failing order,
+          # sites started first. seaweedfs logged zero "Restarting" lines and
+          # zero exit 255s, against six restarts and five 255s on the run
+          # before. All four ports bound (9333, 8888, 8333, 8081) and
+          # /cluster/status, /status and the filer root each returned 200,
+          # where /cluster/status had returned 000 refused. The master
+          # topology advertised "Url": "127.0.0.1:8081", and a 20 byte object
+          # POSTed to the filer read back byte identical, so master to volume
+          # routing follows the new port. Anonymous s3 still answers 403, so
+          # the identity file above is still doing its job.
           services.seaweedfs."seaweedfs" = {
             enable = true;
             dataDir = "${runDir}/seaweedfs";
+            volume.port = 8081;
             filer.enable = true;
             s3.enable = true;
             s3.config = seaweedfsS3Config;
@@ -535,12 +538,85 @@
           #
           # Verified: 1.53.1 with this flag migrated the 1.49.0 database, and
           # /health then returned {"status":"available"} on 127.0.0.1:7700.
-          settings.processes.meilisearch.command = ''
-            ${pkgs.meilisearch}/bin/meilisearch \
-              --db-path ${runDir}/meilisearch \
-              --http-addr 127.0.0.1:7700 \
-              --upgrade-db
-          '';
+          settings.processes.meilisearch = {
+            command = ''
+              ${pkgs.meilisearch}/bin/meilisearch \
+                --db-path ${runDir}/meilisearch \
+                --http-addr 127.0.0.1:7700 \
+                --upgrade-db
+            '';
+
+            # READINESS PROBE, added 2026-08-26. This is a monitor fix, not a
+            # runtime one. meilisearch was up and serving the whole time.
+            #
+            # Every other process here comes from services-flake, and that
+            # module ships a probe with each one. meilisearch is hand written,
+            # so it had none, and process-compose leaves the health column
+            # empty for a process it has no way to test. In the TUI that reads
+            # as the one service that never finished loading, sitting blank
+            # next to five neighbours that all say Ready.
+            #
+            # That is a bad failure to have here specifically. The comment
+            # above is about meilisearch dying quietly on a version bump, and
+            # the operator's only signal is this pane. A column that looks
+            # broken when the service is fine trains you to ignore the column,
+            # which is exactly when the real outage gets missed.
+            #
+            # http_get rather than an exec probe, unlike the services-flake
+            # ones that shell out to curl or redis-cli. process-compose makes
+            # the request itself, so nothing has to be on PATH.
+            #
+            # /health, not /. Both answer 200, but / is only meaningful by
+            # accident. nixpkgs builds meilisearch with no cargo features
+            # ("BuildFeatures":"" in nix derivation show), so mini-dashboard is
+            # absent and / returns JSON where upstream would serve the
+            # dashboard HTML. If that feature is ever enabled here, / starts
+            # answering from a static file handler and stops saying anything
+            # about the engine. /health means the same thing either way.
+            #
+            # The numbers match the services-flake probes on purpose, so all
+            # six processes go Ready on the same cadence. That gives the pane
+            # roughly 52 seconds (2 + 5 x 10) before it gives up. A large
+            # --upgrade-db migration could outrun that, and the failure mode is
+            # a blank health column on a process that then comes up fine. Live
+            # with it. The index here is 136K and rebuildable, so the migration
+            # is a second or two, and a longer budget would delay the honest
+            # signal on the failure this probe exists to catch.
+            #
+            # NO `availability` BLOCK, deliberately. The services-flake
+            # processes all carry restart = on_failure with max_restarts = 5.
+            # Copying that here would look consistent and would help nothing.
+            # The failure this process actually has is the version mismatch
+            # above, which is deterministic. Five more attempts produce five
+            # more identical exits and five more lines of noise over the one
+            # error worth reading.
+            #
+            # Verified 2026-08-26 by running both builds of this stack and
+            # reading /processes off the process-compose API. Before, with the
+            # same engine up and /health already returning 200:
+            #
+            #   meilisearch   Running   -
+            #   redis         Running   Ready
+            #
+            # After, same query, same stack:
+            #
+            #   meilisearch   Running   Ready
+            #   redis         Running   Ready
+            #
+            # All six long lived processes now report Ready with 0 restarts.
+            readiness_probe = {
+              http_get = {
+                host = "127.0.0.1";
+                port = 7700;
+                path = "/health";
+              };
+              initial_delay_seconds = 2;
+              period_seconds = 10;
+              timeout_seconds = 4;
+              success_threshold = 1;
+              failure_threshold = 5;
+            };
+          };
         };
       };
     };

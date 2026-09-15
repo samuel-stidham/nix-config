@@ -20,6 +20,7 @@
     ./terminals.nix
     ./secrets.nix
     ./steam.nix
+    ./open-cad-studio.nix
     ./flameshot.nix
     ./editors.nix
     ./syncthing.nix

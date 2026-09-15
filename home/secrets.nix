@@ -72,6 +72,37 @@ in
   # the gitleaks pre-commit guard runs in every repo. See ../SCANNING.md.
   programs.git = {
     enable = true;
+    # Git LFS through home-manager, REPLACING the apt git-lfs 3.4.1 that was
+    # installed by hand. This does two things: it puts pkgs.git-lfs on PATH
+    # and it writes the [filter "lfs"] section into the generated
+    # ~/.config/git/config, pointing at the store binary by absolute path.
+    #
+    # `git lfs install` is the obvious way to get that filter section and it
+    # cannot work on this machine. The global config it wants to edit is
+    # ~/.config/git/config, which is a home-manager symlink into the read-only
+    # store, and there is no ~/.gitconfig for git to fall back to. So it fails,
+    # with or without --force:
+    #
+    #   error: could not lock config file
+    #   /home/samuelstidham/.config/git/config: Permission denied
+    #   Run `git lfs install --force` to reset Git configuration.
+    #
+    # Nothing is written, so the failure is at least loud. This option is the
+    # only route to the filter config here. Do not run `git lfs install`.
+    # Per-repo `git lfs track` still works as normal, it only edits
+    # .gitattributes.
+    #
+    # WHAT THIS DOES NOT COVER. `git lfs install` would also drop four hooks
+    # into core.hooksPath, and pre-push is the one that uploads LFS objects.
+    # That directory already carries a hand-written doom pre-push hook, which
+    # is not managed here, so LFS uploads are not wired until that hook also
+    # runs `git lfs pre-push "$@"`. Without it `git push` succeeds and sends
+    # pointer files only, which is a silent failure discovered at the next
+    # clone.
+    #
+    # Verified 2026-09-11: the install error above was reproduced on this
+    # machine against the managed config. Pinned nixpkgs carries git-lfs 3.7.1.
+    lfs.enable = true;
     settings = {
       user = {
         name = "Samuel Stidham";

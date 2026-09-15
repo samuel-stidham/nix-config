@@ -125,4 +125,30 @@ lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     description = "Steam with a system-first PATH (Nix coreutils break the Steam runtime)";
     body = steamExec "$argv";
   };
+
+  # CATCH-ALL, added 2026-09-07 after the two entries above were both bypassed.
+  #
+  # The desktop entry covers the Cinnamon menu and the fish function covers
+  # fish. Nothing covered bash, zsh, a script, or any caller that resolves
+  # `steam` off PATH, and every one of those reached /usr/bin/steam directly
+  # with the Nix profile still leading PATH. That is how a broken client got
+  # started at 21:58 on 2026-09-07: steamwebhelper went defunct and the console
+  # log filled with `dirname: /lib/x86_64-linux-gnu/libc.so.6: version
+  # `GLIBC_2.42' not found`, because nixpkgs' coreutils want 2.42 and Ubuntu
+  # 24.04 tops out at 2.39.
+  #
+  # ~/.local/bin precedes both ~/.nix-profile/bin and /usr/bin in the graphical
+  # session PATH and precedes /usr/bin in the interactive shell PATH, so this
+  # wrapper wins for every PATH-based launch on either. It is a symlink to the
+  # same store script the other two entries call, so there is one launcher and
+  # one clean PATH, not three copies that can drift.
+  #
+  # NO RECURSION. cleanPath deliberately omits ~/.local/bin, so the script's own
+  # `command -v steam` resolves past this symlink to /usr/bin/steam.
+  #
+  # This makes the fix independent of which glibc is newer. The mismatch clears
+  # on its own whenever the distro's glibc catches up to nixpkgs' and returns
+  # every time nixpkgs pulls ahead again, which is most of a release's life.
+  # Pinning PATH instead of chasing versions means neither swing is felt here.
+  home.file.".local/bin/steam".source = steamLaunch;
 }
