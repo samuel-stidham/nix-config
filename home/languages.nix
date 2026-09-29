@@ -72,8 +72,16 @@ in
     # clang-tools above and is the module-aware one, driven by clangd). These
     # are standalone tools independent of the compiler version, so clang-analyzer
     # riding clang 21 while the toolchain is clang 22 is fine.
+    #
+    # LOW PRIORITY SINCE 2026-09-29. The nixpkgs bump to 7a0f122f (2026-09-28)
+    # made clang-tools 22.1.8 ship its own bin/scan-view. The profile build then
+    # died with "pkgs.buildEnv error: two given paths contain a conflicting
+    # subpath" on clang-analyzer-21.1.8/bin/scan-view against clang-tools. The
+    # obvious fix, dropping clang-analyzer, loses scan-build, which clang-tools
+    # 22 still does not carry. lowPrio lets the scan-view matching the pinned
+    # toolchain win and keeps scan-build from here.
     valgrind                # dynamic memory/thread analysis, confirmed 3.27.1
-    clang-analyzer          # scan-build / scan-view driver, confirmed 21.1.8
+    (lib.lowPrio clang-analyzer)  # scan-build driver, confirmed 21.1.8
     include-what-you-use    # header hygiene (iwyu), confirmed 0.26
     flawfinder              # pattern-based C/C++ security scanner, confirmed 2.0.20
 
