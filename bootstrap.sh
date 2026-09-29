@@ -1926,6 +1926,11 @@ RemainAfterExit=yes
 # Only the nvidia libs. Everything else in /usr/lib would shadow the Nix store
 # paths that come after it on LD_LIBRARY_PATH.
 ExecStart=/bin/sh -c 'mkdir -p /run/opengl-driver/lib && find ${nvdir} -maxdepth 1 -name "lib*nvidia*" -exec ln -sf {} /run/opengl-driver/lib/ \;'
+# libcuda carries no "nvidia" in its name, so the glob above never linked it.
+# Every CUDA program then found no driver, even nixpkgs builds whose RUNPATH
+# names /run/opengl-driver/lib. home/nvidia-compute.nix links through here too.
+# libcuda.so* on purpose, not libcuda*, which would pull in a host libcudart.
+ExecStart=/bin/sh -c 'find ${nvdir} -maxdepth 1 -name "libcuda.so*" -exec ln -sf {} /run/opengl-driver/lib/ \;'
 
 [Install]
 WantedBy=graphical.target

@@ -14,6 +14,7 @@
     ./cli.nix
     ./apps.nix
     ./graphics.nix
+    ./nvidia-compute.nix
     ./emacs.nix
     ./theme.nix
     ./fonts.nix
