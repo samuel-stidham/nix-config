@@ -334,6 +334,74 @@
         # boot. The pin below was built as nixGLNvidia-595.84 BEFORE the host
         # switched, which proved the 25.11 nvidia_x11 builder handles 595.84
         # and left no window where the box had a driver nix could not match.
+        #
+        # BUMPED TO 595.91.07 ON 2026-09-15, a point release on the same branch.
+        #
+        # This time the pin moved BEFORE the reboot, against the order above.
+        # The order rule guards a host that still works. This host did not.
+        # apt had replaced the 595.84 userspace with 595.91.07 while the 595.84
+        # module still ran. Host nvidia-smi already failed with
+        # "Driver/library version mismatch, NVML library version: 595.91".
+        # Bumping early cost nothing that was not already lost. The only
+        # nvidia.ko on disk under 7.0.0-31 was 595.91.07, so no old module
+        # remained for the old pin to serve after the reboot.
+        #
+        # scripts/nixgl-nvidia-refresh.sh could not produce this pin. It reads
+        # /proc/driver/nvidia/version, which is the RUNNING module, still
+        # 595.84. The version here came from `modinfo -F version nvidia`, which
+        # reads the module file on disk. The hash came from the same
+        # `nix store prefetch-file` call the script makes.
+        #
+        # Verified 2026-09-23 on this machine after the reboot, which closes
+        # the check owed above. `nixGLNvidia nvidia-smi` reports 595.91.07 with
+        # no mismatch. `nixGLNvidia glxinfo -B` reports "OpenGL core profile
+        # version string: 4.6.0 NVIDIA 595.91.07" with direct rendering Yes.
+        #
+        # THE PROFILE GOES STALE, NOT THE PIN. Between the 09-15 edit and that
+        # check this file read 595.91.07 while the installed profile still
+        # carried nixGLNvidia-595.84. Every nix GL app failed with "Failed to
+        # initialize NVML: Driver/library version mismatch, NVML library
+        # version: 595.84" against a host already running 595.91.07. Editing
+        # this file fixes nothing until `home-manager switch` runs. The apt
+        # upgrade and the switch are two halves of one driver bump, and the
+        # half that is easy to forget is the second one.
+        #
+        # A KERNEL BUMP IS NOT A DRIVER BUMP. On 2026-09-22 apt installed
+        # 7.0.0-34-generic and linux-modules-nvidia-595-open-7.0.0-34-generic
+        # at 7.0.0-34.34~24.04.1+1. That version string looks like a driver
+        # change and is not one. It is the same module rebuilt for the new
+        # kernel. `modinfo -k 7.0.0-34-generic -F version nvidia` reports
+        # 595.91.07, matching 7.0.0-31, so this pin needs no edit to survive
+        # the reboot onto 7.0.0-34. Read the version out of the module before
+        # believing the apt package version.
+        #
+        # THE RELEASE UPGRADE KEPT THE PIN AND DROPPED THE DRIVER. On 2026-09-29
+        # do-release-upgrade moved this box to 26.04.1 (resolute). The 26.04
+        # paragraph above predicted the pin would survive, and it did. What it
+        # missed is that the upgrade removed the whole 595 userspace.
+        # /var/log/dist-upgrade/main.log lists nvidia-utils-595, both arches of
+        # libnvidia-gl-595, xserver-xorg-video-nvidia-595, nvidia-settings and
+        # the rest under removal. It kept linux-modules-nvidia-595-open and
+        # nvidia-kernel-common-595.
+        #
+        # This failure is SILENT. The desktop came up normally on the AMD iGPU
+        # through modesetting, so nothing looked broken. The 5090 had no
+        # userspace, host nvidia-smi did not exist, and `nixGLNvidia nvidia-smi`
+        # died with "exec: nvidia-smi: not found". The obvious check passes
+        # anyway. `modinfo -F version nvidia` still read 595.91.07 and matched
+        # this pin, because the module is the half that survived. After a
+        # release upgrade, check that host `nvidia-smi` runs, not the module.
+        #
+        # The fix was apt alone. resolute carries nvidia-driver-595-open at
+        # 595.91.07-0ubuntu0.26.04.1, not the 595.84 predicted above, and
+        # `ubuntu-drivers devices` marks it recommended. That is the same
+        # version as this pin, so no edit and no `home-manager switch` followed.
+        #
+        # Verified 2026-09-29 after the reboot. The running module, the module
+        # on disk, host nvidia-smi and `nixGLNvidia nvidia-smi` all report
+        # 595.91.07. Xorg.0.log loads the nvidia driver for the 5090.
+        # `nixGLNvidia glxinfo -B` reports "OpenGL core profile version string:
+        # 4.6.0 NVIDIA 595.91.07" with direct rendering Yes.
         legacyPackages.nixGLNvidia = (import "${nixgl}/default.nix" {
           # Built from nixpkgs-nvidia (a stable branch), NOT the unstable `pkgs`
           # above — see the nixpkgs-nvidia input comment for why (the `kernel`
@@ -342,8 +410,8 @@
             inherit system;
             config.allowUnfree = true;
           };
-          nvidiaVersion = "595.84";
-          nvidiaHash = "sha256-mcQE5SExvye8ptoCaNzOPr7cenOrF0BxqZXPGmxeugY=";
+          nvidiaVersion = "595.91.07";
+          nvidiaHash = "sha256-yiPIjdJLB6GRZE4eEc+3vN11NzBXSa9A+YABiwleYxM=";
         }).nixGLNvidia;
 
         # Web layer for ~/sites/<name>. php-fpm and the .test resolver. Run with
