@@ -105,6 +105,8 @@ kakoune-2026.05.21
 keepassxc-2.7.12
 lego-5.5.1
 leiningen-2.12.0
+libnotify-0.8.8
+libnotify-0.8.8-man
 librsvg-2.62.3
 libtool-2.6.2
 lld-22.1.8

@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 # Command-line tooling that used to come from apt or from cargo installs. Nix
 # owns it now, so the apt and cargo copies are retired during purge-lang-layers.
@@ -88,5 +88,12 @@
     typst
     librsvg
     imagemagick
-  ];
+  ]
+  # notify-send, for the pomo timer in fish/functions.fish. It was not on this
+  # box after the 26.04 upgrade, and apt's libnotify-bin is not in the bootstrap
+  # list. Nix is the house route for a CLI tool. It is a plain DBus client, so
+  # it reaches Cinnamon's notification daemon with no nixGL wrapper. Linux only,
+  # because the freedesktop notification spec it speaks does not exist on darwin.
+  # Confirmed 0.8.8 on the channel, with bin/notify-send in its out output.
+  ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ libnotify ];
 }

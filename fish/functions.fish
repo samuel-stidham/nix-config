@@ -366,3 +366,85 @@ function nixgl-nvidia --description 'Run a command under nixGL, forcing the NVID
         "$HOME/Code/samuel-stidham/nix-config#legacyPackages.x86_64-linux.nixGLNvidia" \
         -- $argv
 end
+
+# ----------------------------------------
+# pomo, a 50/10 focus timer
+# ----------------------------------------
+#
+# 50 minutes of focus and 10 of break, the rhythm of the working day here. Four
+# cycles, an hour for lunch, then three more. `pomo 4` runs the morning and
+# `pomo 3` the afternoon. The last focus block in a run skips its break. What
+# follows it is lunch or the end of the day, not another block.
+#
+# A CHIME, NOT A VOICE. Spoken prompts through speech-dispatcher were tried and
+# dropped. rhvoice and piper sound far behind the macOS voices, and that setup
+# did not survive the 26.04 upgrade anyway. A sound plus a critical
+# notification needs only PipeWire and a notification daemon. The notification
+# stays up until dismissed, so a chime missed with headphones off is still seen.
+#
+# notify-send comes from libnotify in home/cli.nix, not apt. Every tool is
+# probed rather than assumed, so a box missing one still gets the others. A box
+# with none of them, darwin included, falls back to the terminal bell.
+#
+# End times print as HH:MM. `date -d @N` is GNU and `date -r N` is BSD. The
+# flake declares darwin, so both are tried.
+#
+# Usage: pomo [-f MIN] [-b MIN] [CYCLES]. Defaults are 50, 10 and 1. Fractional
+# minutes work, which is how it was tested: pomo -f 0.05 -b 0.05 2.
+function pomo --description 'Focus timer, 50/10 by default: pomo [-f MIN] [-b MIN] [CYCLES]'
+    argparse 'f/focus=' 'b/break=' h/help -- $argv; or return 2
+    if set -q _flag_help
+        echo "usage: pomo [-f MIN] [-b MIN] [CYCLES]   defaults: 50, 10, 1"
+        return 0
+    end
+    set -l focus 50
+    set -q _flag_focus; and set focus $_flag_focus
+    set -l rest 10
+    set -q _flag_break; and set rest $_flag_break
+    set -l cycles 1
+    set -q argv[1]; and set cycles $argv[1]
+    if not string match -qr '^[1-9][0-9]*$' -- $cycles
+        echo "pomo: CYCLES must be a positive whole number, got '$cycles'" >&2
+        return 2
+    end
+    for n in (seq $cycles)
+        __pomo_block "Focus $n/$cycles" $focus "Focus $n/$cycles done" alarm-clock-elapsed
+        or return
+        test $n -lt $cycles; or break
+        __pomo_block "Break $n/$cycles" $rest "Break over, back to focus" complete
+        or return
+    end
+    echo "pomo: $cycles cycle(s) complete"
+end
+
+function __pomo_block --argument-names label minutes message sound
+    set -l secs (math --scale=0 "$minutes * 60" 2>/dev/null)
+    if test -z "$secs"
+        echo "pomo: '$minutes' is not a number of minutes" >&2
+        return 2
+    end
+    set -l end_at (math (date +%s) + $secs)
+    set -l at (date -d @$end_at +%H:%M 2>/dev/null; or date -r $end_at +%H:%M 2>/dev/null)
+    echo "$label, $minutes min, until $at"
+    sleep $secs; or return
+    __pomo_alert "$message" $sound
+end
+
+function __pomo_alert --argument-names message sound
+    if command -q notify-send
+        notify-send -u critical -a pomo pomo "$message"
+    end
+    # The players run in the background. alarm-clock-elapsed plays for 6.14s,
+    # and a blocking pw-play made every break start that much late. A test run
+    # of 9s of timers took 23s before this change.
+    set -l file /usr/share/sounds/freedesktop/stereo/$sound.oga
+    if command -q pw-play; and test -r $file
+        pw-play $file &
+        disown
+    else if command -q paplay; and test -r $file
+        paplay $file &
+        disown
+    else
+        printf '\a'
+    end
+end
