@@ -148,7 +148,7 @@ pay-respects-0.8.8
 php-with-extensions-8.5.11
 pkg-config-wrapper-0.29.2
 pkg-config-wrapper-0.29.2-man
-prismlauncher-11.1.0
+prismlauncher-11.1.1
 python3.14-httpie-3.2.4
 python3.14-poetry-2.4.3
 python3-3.14.7

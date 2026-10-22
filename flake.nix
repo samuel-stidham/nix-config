@@ -2,7 +2,30 @@
   description = "samuelstidham home-manager configuration and local dev services";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # PINNED 2026-10-22 to one nixos-unstable-small commit, not to a branch.
+    #
+    # PHP 8.5.12 fixes CVE-2026-109618 and CVE-2026-109619. Both allow
+    # unauthenticated remote code execution through php-fpm, which nginx
+    # exposes on 0.0.0.0:443 here. nixpkgs bumped php85 on master on
+    # 2026-10-21 and nixos-unstable-small carried it the same evening.
+    #
+    # The obvious fix was `nix flake update nixpkgs` against nixos-unstable.
+    # It ran, moved the lock to 02c087f3 (2026-10-20), and left PHP at 8.5.11.
+    # That branch gates on the full Hydra test set and lags small by days.
+    # Nothing in the output said the fix was missing. A lock update that
+    # looks like an upgrade and is not one is the failure this pin records.
+    #
+    # Why a commit and not the small branch: small skips the tests that cover
+    # the heavy parts of this config, CUDA, Steam and nixGL. One commit that
+    # was dry-run against this home config is a smaller surface than a
+    # moving branch. Return to "github:NixOS/nixpkgs/nixos-unstable" once
+    # that branch is past dce1caf5. Check with:
+    #   nix eval --raw github:NixOS/nixpkgs/nixos-unstable#php85.version
+    #
+    # Verified: php85 evaluates to 8.5.12 at this commit. A dry run of the
+    # sites stack here fetched php-8.5.12 from cache.nixos.org and compiled
+    # only the extensions outside Hydra's default set.
+    nixpkgs.url = "github:NixOS/nixpkgs/dce1caf58d1a943af38b376e824a0d036ec3eea7";
     flake-parts.url = "github:hercules-ci/flake-parts";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -137,11 +160,55 @@
           # bun is NOT in the same position and bunOverlay above stays. nixpkgs
           # still packages 1.3.13 against upstream 1.4.0.
 
+          # TEMPORARY, DELETE when nixos-unstable ships prismlauncher >= 11.1.1.
+          # Check after a flake update with:
+          #
+          #   nix eval nixpkgs#legacyPackages.x86_64-linux.prismlauncher.version
+          #
+          # 11.1.1 is a SECURITY hotfix, released upstream on 2026-09-28. Its
+          # only change is PR #6183, "Prevent path traversal in CurseForge
+          # modpack overrides". Under 11.1.0 a crafted CurseForge pack can write
+          # files outside its own instance directory. Four of the six instances
+          # on this machine are CurseForge packs, the exact input the bug trusts.
+          #
+          # As of 2026-10-03 nixpkgs master packages 11.1.1. nixos-unstable and
+          # nixpkgs-unstable both still read 11.1.0, so a flake update alone
+          # does not pick it up yet.
+          #
+          # The obvious override is `version` alone, and it fails SILENTLY.
+          # nixpkgs fetches src by tag with a fixed hash. A fixed-output path
+          # depends only on that hash, so the old hash keeps the old store path.
+          # Overriding only version resolves src to the 11.1.0 tarball's path
+          # while its tag reads 11.1.1. cache.nixos.org holds that path, so Nix
+          # substitutes the old source and never fetches the new tag. The result
+          # is 11.1.0 code labelled 11.1.1. Both fields move together below,
+          # which is the whole of the nixpkgs master bump.
+          #
+          # Only the unwrapped package is overridden. The prismlauncher wrapper
+          # receives it through `final`, so the wrapper needs no edit. Master
+          # also adds libxkbcommon to the wrapper. That change is unrelated to
+          # the hotfix and is not carried here.
+          #
+          # Worlds are not in the store. They live under
+          # ~/.local/share/PrismLauncher/instances, which a switch never touches.
+          prismOverlay = final: prev: {
+            prismlauncher-unwrapped = prev.prismlauncher-unwrapped.overrideAttrs (old: {
+              version = "11.1.1";
+              # Hash read from nixpkgs master's package.nix, not prefetched here.
+              src = prev.fetchFromGitHub {
+                owner = "PrismLauncher";
+                repo = "PrismLauncher";
+                tag = "11.1.1";
+                hash = "sha256-vSCiCDatoRnA1vpqLDuelC/2cBCKp+fXGT/O0DYjHuk=";
+              };
+            });
+          };
+
           mkHome = system: home-manager.lib.homeManagerConfiguration {
             pkgs = import nixpkgs {
               inherit system;
               config.allowUnfree = true;
-              overlays = [ bunOverlay ];
+              overlays = [ bunOverlay prismOverlay ];
             };
             # `self` + `system` let home modules reach the flake's own outputs
             # (home/graphics.nix installs self.legacyPackages.${system}.nixGLNvidia,
@@ -402,6 +469,41 @@
         # 595.91.07. Xorg.0.log loads the nvidia driver for the 5090.
         # `nixGLNvidia glxinfo -B` reports "OpenGL core profile version string:
         # 4.6.0 NVIDIA 595.91.07" with direct rendering Yes.
+        #
+        # BUMPED TO 595.99.02 ON 2026-10-08, a point release on the same branch.
+        #
+        # `apt dist-upgrade` moved resolute's nvidia-driver-595-open from
+        # 595.91.07-0ubuntu0.26.04.1 to 595.99.02-0ubuntu0.26.04.1. It was the
+        # 09-15 shape again. apt replaced the userspace while the 595.91.07
+        # module kept running. Host nvidia-smi failed with "Driver/library
+        # version mismatch, NVML library version: 595.99". The version here
+        # came from `modinfo -F version nvidia`, because the refresh script
+        # still reads the running module and would print 595.91.07. The hash
+        # came from `nix store prefetch-file` on NVIDIA's 595.99.02 runfile.
+        #
+        # The module on disk now comes from dkms, the apt TRAP above. modinfo
+        # resolves to updates/dkms/nvidia.ko.zst under 7.0.0-38, and `dkms
+        # status` lists 595.99.02 for both 7.0.0-34 and 7.0.0-38. The same
+        # upgrade removed linux-modules-nvidia-595-open-7.0.0-34-generic.
+        #
+        # BUMPING EARLY IS FREE, SWITCHING EARLY IS NOT. The 09-15 paragraph
+        # says bumping before the reboot cost nothing that was not already
+        # lost. That holds for the edit and is wrong for the switch. Measured
+        # before this reboot, host `glxinfo -B` failed with BadValue on
+        # X_GLXCreateNewContext. The installed nixGLNvidia-595.91.07 still
+        # reported "4.6.0 NVIDIA 595.91.07" with direct rendering Yes. nixGL
+        # carries its own userspace, and that userspace still matched the
+        # running module. The fresh nixGLNvidia-595.99.02 failed exactly like
+        # the host. So edit and build whenever, but run `home-manager switch`
+        # immediately before the reboot. Nix GL apps then lose nothing.
+        #
+        # NOT YET VERIFIED AFTER THE REBOOT. Verified 2026-10-08 before it:
+        # the pin builds as nixGLNvidia-595.99.02 from the 25.11 nvidia_x11
+        # builder. The runtime check owed is the 09-29 one. The running
+        # module, host nvidia-smi and `nixGLNvidia nvidia-smi` must all read
+        # 595.99.02. `nixGLNvidia glxinfo -B` must report "4.6.0 NVIDIA
+        # 595.99.02" with direct rendering Yes. Replace this paragraph with
+        # that result once it has run.
         legacyPackages.nixGLNvidia = (import "${nixgl}/default.nix" {
           # Built from nixpkgs-nvidia (a stable branch), NOT the unstable `pkgs`
           # above — see the nixpkgs-nvidia input comment for why (the `kernel`
@@ -410,8 +512,8 @@
             inherit system;
             config.allowUnfree = true;
           };
-          nvidiaVersion = "595.91.07";
-          nvidiaHash = "sha256-yiPIjdJLB6GRZE4eEc+3vN11NzBXSa9A+YABiwleYxM=";
+          nvidiaVersion = "595.99.02";
+          nvidiaHash = "sha256-6HR3lYv3YwcFSTJL1a1slI66btIQ5EAFs+/4SUD24ew=";
         }).nixGLNvidia;
 
         # Web layer for ~/sites/<name>. php-fpm and the .test resolver. Run with

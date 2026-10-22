@@ -1398,6 +1398,47 @@ EOF
   sudo systemctl restart logrotate.timer
 }
 
+crash_reports() {
+  log "crash reports: apport unpacks cores on disk"
+  # THE FAILURE. On 2026-10-15, right after boot, apport-autoreport.service
+  # picked up a claude-desktop crash from /var/crash. whoopsie-upload-all
+  # unpacks the core through tempfile.mkstemp, which lands in /tmp. /tmp is the
+  # systemd tmp.mount tmpfs, sized at 50% of RAM, so 46G on this 92G box. The
+  # core filled it. The journal shows "[Errno 28] No space left on device" and
+  # a 46.2G memory peak for the unit. Every shell opened while it ran failed
+  # starship's init with "cat: write error: No space left on device".
+  # home/theme.nix carries the shell side of the fix.
+  #
+  # WHAT DOES NOT WORK. logrotate does not apply, because nothing here is a log.
+  # The space went to a core unpacked from a compressed .crash file, which lives
+  # for seconds and is never rotated. A bigger /tmp only moves the line, since
+  # an Electron core can outgrow any tmpfs sized against RAM. Turning automatic
+  # problem reporting off would also work. That is a privacy choice made in
+  # Settings, and it belongs to Sam, not to this script.
+  #
+  # THE FIX. A drop-in gives the unit a private /var/tmp and points TMPDIR at
+  # it. apport's mkstemp calls pass no dir, so they honour TMPDIR and the core
+  # goes to disk instead of RAM. PrivateTmp also deletes that directory when the
+  # oneshot stops, so a run killed mid-unpack cannot strand a 46G file. The
+  # trade is one large disk write per big crash, on a root filesystem with 1.8T
+  # free.
+  #
+  # PROBE, NOT A FAMILY BRANCH. apport is Ubuntu's crash reporter. Where the
+  # unit does not exist there is nothing to redirect, and the probe says so on
+  # every family. Unverified on fedora and suse, no such machine available.
+  if ! systemctl cat apport-autoreport.service >/dev/null 2>&1; then
+    echo "No apport-autoreport.service here. Nothing to redirect, skipping."
+    return
+  fi
+  sudo mkdir -p /etc/systemd/system/apport-autoreport.service.d
+  sudo tee /etc/systemd/system/apport-autoreport.service.d/scratch-on-disk.conf >/dev/null <<'EOF'
+[Service]
+PrivateTmp=yes
+Environment=TMPDIR=/var/tmp
+EOF
+  sudo systemctl daemon-reload
+}
+
 # --------------------------------------------------------------------------
 # App configs that are just git checkouts. OS agnostic.
 # --------------------------------------------------------------------------
@@ -2400,6 +2441,7 @@ all() {
   vendor_apps
   flatpaks
   system_logs
+  crash_reports
   doom_emacs
   lazyvim
   monogame
