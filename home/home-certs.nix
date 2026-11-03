@@ -15,10 +15,10 @@
 #
 # WHY DAILY, FOR A 90 DAY CERT
 #
-# lego renews only inside --days 30, so 60 of these runs do nothing at all and
-# cost one process each. Daily means ~30 chances to notice a problem before the
-# cert actually expires. A monthly timer would give roughly one, and if that run
-# failed the next signal would be a browser error.
+# lego renews only inside --renew-days 30, so 60 of these runs do nothing at
+# all and cost one process each. Daily means ~30 chances to notice a problem
+# before the cert actually expires. A monthly timer would give roughly one, and
+# if that run failed the next signal would be a browser error.
 #
 # This is a USER timer for the same reason btrfs-scrub is: the Cloudflare token
 # lives in the user's passage store, and a root unit would have to reach into it.

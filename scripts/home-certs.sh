@@ -34,7 +34,7 @@
 #
 # Let's Encrypt allows 5 duplicate certs per week. A loop that re-issues on every
 # run will lock you out for days, and the lockout is not overridable. So:
-#   - renew, do not re-issue. lego only acts inside --days.
+#   - renew, do not re-issue. lego only acts inside --renew-days.
 #   - test against --staging first. Staging certs are untrusted by browsers but
 #     prove the whole path: token, DNS write, propagation, cleanup.
 #
@@ -94,6 +94,25 @@ if [ -z "$EMAIL" ]; then
   exit 1
 fi
 
+# LEGO 5 MOVED EVERY FLAG BELOW THE SUBCOMMAND, and the timer failed daily for
+# seventeen days before anyone looked. nixpkgs moved lego from 4.x to 5.5.1 and
+# from 2026-10-16 every run died on the first flag:
+#
+#   Incorrect Usage: flag provided but not defined: -accept-tos
+#
+# Three things changed, per the v4 to v5 CLI guide at
+# go-acme.github.io/lego/migration/cli/, read 2026-11-02. The global flags are
+# now flags of `run`, so they go AFTER it. `renew` is gone, `run` renews too,
+# and `--days` is `--renew-days`. `--dns.propagation-wait` is
+# `--dns.propagation.wait`. The on-disk layout under --path changed as well,
+# and the migrate probe below the mkdir handles that.
+#
+# The failure was LOUD in the journal and SILENT everywhere else. The unit
+# failed, systemd marked the user session degraded, and nothing in the serving
+# path noticed, because the cert on disk was still valid. It would have stayed
+# that way until the cert expired in December and nginx started serving a dead
+# cert. Loud is only useful when something reads the journal, and here nothing
+# did until a home-manager switch printed the degraded session.
 ARGS=(
   --accept-tos
   --email "$EMAIL"
@@ -105,7 +124,7 @@ ARGS=(
   # the tailnet, and a stale negative cache in that path has already caused one
   # NXDOMAIN. Checking authoritative avoids the whole class of problem.
   --dns.resolvers 1.1.1.1:53
-  --dns.propagation-wait 30s
+  --dns.propagation.wait 30s
 )
 
 if [ "$STAGING" = 1 ]; then
@@ -119,15 +138,41 @@ LEGO_KEY="${LEGO_PATH}/certificates/_.${DOMAIN}.key"
 
 mkdir -p "$CERTDIR" "$LEGO_PATH"
 
-if [ "$FORCE" = 1 ] || [ ! -f "$LEGO_CRT" ]; then
+# lego 5 changed the layout under --path and the JSON inside it, and its CLI
+# guide says to run `lego migrate` once before any other command. The v4 tree
+# keeps each account key under accounts/<server>/<account>/keys/, and v5 drops
+# the keys/ directory. Probe for that directory rather than for a lego version,
+# so a store that was already migrated, or issued fresh under v5, never runs
+# migrate at all. Do not migrate by hand, the guide says the JSON changes too.
+#
+# migrate has no --yes flag. It prints "Continue? Y/n" and reads the console,
+# and under the timer there is no console, so the first attempt on this box
+# died with "Could not read from the console error=EOF". The Y on stdin is the
+# whole fix. The backup it asks for is the one thing it cannot check, so take
+# one before the first run on a new box: cp -a the --path directory aside.
+for _keys in "$LEGO_PATH"/accounts/*/*/keys; do
+  if [ -d "$_keys" ]; then
+    echo "lego 4 layout at ${LEGO_PATH}, running lego migrate once ..."
+    printf 'Y\n' | lego migrate --path "$LEGO_PATH" || { echo "lego migrate failed" >&2; exit 1; }
+    break
+  fi
+done
+
+if [ "$FORCE" = 1 ]; then
+  echo "re-issuing *.${DOMAIN} now, --force ..."
+  lego run "${ARGS[@]}" --renew-force
+  rc=$?
+elif [ ! -f "$LEGO_CRT" ]; then
   echo "issuing a new cert for *.${DOMAIN} ..."
-  lego "${ARGS[@]}" run
+  lego run "${ARGS[@]}"
   rc=$?
 else
   echo "renewing *.${DOMAIN} if it expires within ${RENEW_DAYS} days ..."
-  # --days makes this a no-op on a fresh cert, which is what makes it safe to
-  # run daily from a timer without touching the rate limit.
-  lego "${ARGS[@]}" renew --days "$RENEW_DAYS"
+  # --renew-days makes this a no-op on a fresh cert, which is what makes it safe
+  # to run daily from a timer without touching the rate limit. lego 5 may also
+  # sleep a random while before a renewal. Its help says not to disable that for
+  # automated runs, so it stays.
+  lego run "${ARGS[@]}" --renew-days "$RENEW_DAYS"
   rc=$?
 fi
 
