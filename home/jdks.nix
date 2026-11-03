@@ -10,10 +10,11 @@
 # different Java per Minecraft instance. The symlinks are stable across rebuilds,
 # which the raw /nix/store paths are not.
 #
-# All versions confirmed on nixpkgs-unstable on 2026-08-25:
-#   temurin-bin-8  8.0.492    temurin-bin-21 21.0.11
-#   temurin-bin-11 11.0.31    temurin-bin-25 25.0.3
-#   temurin-bin-17 17.0.19    temurin-bin-26 26.0.1
+# All versions confirmed on the pinned nixpkgs on 2026-11-02:
+#   temurin-bin-8  8.0.504    temurin-bin-21 21.0.12
+#   temurin-bin-11 11.0.32    temurin-bin-25 25.0.4
+#   temurin-bin-17 17.0.20    temurin-bin-26 26.0.2
+#                             temurin-bin-27 27.0.0
 
 {
   # GUARDED ON LINUX. Temurin JDK 8 has no aarch64-darwin build: Adoptium never
@@ -34,7 +35,10 @@
   #   1.16 and older        -> temurin-8
   #   1.17 through 1.20.4   -> temurin-17
   #   1.20.5 and newer      -> temurin-21
-  # 11, 25, and 26 are kept for other JVM work.
+  # 11, 25, 26, and 27 are kept for other JVM work. 27 is the current feature
+  # release, added 2026-11-02 once nixpkgs carried its GA build. It does not
+  # lead on PATH. 21 is the LTS that clojure, leiningen and the rjk Jupyter
+  # kernel are checked against. Nothing here needs a newer default.
   home.file = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     ".local/share/jdks/temurin-8".source = pkgs.temurin-bin-8;
     ".local/share/jdks/temurin-11".source = pkgs.temurin-bin-11;
@@ -42,5 +46,6 @@
     ".local/share/jdks/temurin-21".source = pkgs.temurin-bin-21;
     ".local/share/jdks/temurin-25".source = pkgs.temurin-bin-25;
     ".local/share/jdks/temurin-26".source = pkgs.temurin-bin-26;
+    ".local/share/jdks/temurin-27".source = pkgs.temurin-bin-27;
   };
 }
