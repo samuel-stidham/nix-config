@@ -30,14 +30,16 @@ let
   # So the release jar is fetched and pinned by hash instead.
   #
   # Was pinned at 3.0.2, the version hand-installed here on 2026-03-11 and
-  # carried over when this module was written. 3.0.4 is upstream's latest,
-  # released 2026-06-15. The bump is deliberate rather than a drive-by, which is
-  # what the previous comment here was holding out for.
-  rjkVersion = "3.0.4";
+  # carried over when this module was written. Moved to 3.0.4 on 2026-07-24 and
+  # to 4.0.0 on 2026-11-02, each time because it was upstream's latest tag and
+  # each time deliberately rather than as a drive-by. The hash comes from
+  # `nix store prefetch-file` on the release jar. A major bump is the one that
+  # can raise the JDK floor, so see the re-check under rjkJdk below.
+  rjkVersion = "4.0.0";
 
   rjkJar = pkgs.fetchurl {
     url = "https://github.com/padreati/rapaio-jupyter-kernel/releases/download/${rjkVersion}/rapaio-jupyter-kernel-${rjkVersion}.jar";
-    hash = "sha256-eKmOvgxS6+ZcCzFvIHJABJeHAJqtJniLS5JhyNcgDO8=";
+    hash = "sha256-DQ1aeqMNqn7go9Vo/8kkiApZ72HVQrSFathvhwhXIg0=";
   };
 
   # PINNED JDK, not a bare `java`. The installer-written kernelspec had
@@ -58,6 +60,12 @@ let
   #     at org.rapaio.jupyter.kernel.MainApp.main(MainApp.java:28)
   # Reaching MainApp.main means the class files loaded. Only temurin 21 was
   # re-run, because 21 is what this kernelspec actually names.
+  #
+  # 4.0.0 was re-checked the same way on 2026-11-02 under temurin 21.0.12.1 and
+  # reached the same IllegalArgumentException, now at MainApp.java:29. That
+  # proves one class. Every .class in the jar was also read for its major
+  # version and the highest is 61, Java 17, although the manifest says
+  # Build-Jdk-Spec 25. So 21 remains enough and rjkJdk does not move.
   rjkJdk = pkgs.temurin-bin-21;
 
   # The env block is upstream's own defaults, written by `-i -auto`. It is

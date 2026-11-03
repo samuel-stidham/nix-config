@@ -27,11 +27,11 @@ let
   # The two lines open-cad-studio-update rewrites. Their exact shape is load
   # bearing: the updater matches `^  version = "..."` and `^    hash = "sha256-..."`
   # by anchor, so do not reindent them or fold them into the fetchurl call.
-  version = "2026.36";
+  version = "2026.44";
 
   src = pkgs.fetchurl {
     url = "https://github.com/HakanSeven12/OpenCADStudio/releases/download/v${version}/OpenCADStudio-v${version}-linux-x86_64.AppImage";
-    hash = "sha256-Y3nMdGMdNjOrHlPIkTz+5o0qxxdJ+dN86rTwpM4gAuc=";
+    hash = "sha256-CH5XxCXlZzf5ucXc5XJp44zt5XpY3CsiA1GsLOVZ8Dc=";
   };
 
   # Unpacked separately from the wrap so the desktop file and icon can be lifted

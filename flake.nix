@@ -38,20 +38,30 @@
       # sense, so they live under `flake`.
       flake =
         let
-          # TEMPORARY, DELETE when nixos-unstable ships bun >= 1.4.0. Check
-          # after a flake update with:
+          # NOT TEMPORARY ANY MORE. This overlay was written as "DELETE when
+          # nixos-unstable ships bun >= 1.4.0", the same shape as the deno
+          # overlay that was deleted below. That condition is MET. The lock of
+          # 2026-11-02 packages bun 1.4.2. The overlay stays for a reason the
+          # delete condition never considered, in the sources block below.
+          # nixpkgs points x86_64-linux at the baseline zip, the build for CPUs
+          # without AVX2, and that is still true at 1.4.2:
           #
-          #   nix eval nixpkgs#legacyPackages.x86_64-linux.bun.version
+          #   nix eval nixpkgs#legacyPackages.x86_64-linux.bun.passthru.sources.x86_64-linux.url
+          #   .../bun-v1.4.2/bun-linux-x64-baseline.zip
           #
-          # Bun 1.4.0 released upstream on 2026-08-20. As of 2026-08-25 nixpkgs
-          # still packages 1.3.13 on master and unstable both. The bump PR
-          # "bun: 1.3.13 -> 1.4.0" is open and unmerged, so the channel is days
-          # away at best.
+          # Deleting the overlay would therefore move this box onto the baseline
+          # build, a silent downgrade on a 9950X3D. So the overlay now exists to
+          # pick the plain zip. While it exists it tracks the newest release,
+          # because the hashes have to be refreshed on every bump either way.
           #
-          # RECHECKED 2026-08-25. The LATEST file on bun's main branch reads
-          # 1.4.0 and its releases feed lists no newer tag, so this overlay is
-          # at the newest release rather than merely ahead of the channel. Check
-          # both again before bumping the version below.
+          # HISTORY. Bun 1.4.0 released upstream on 2026-08-20. As of 2026-08-25
+          # nixpkgs still packaged 1.3.13 on master and unstable both, so the
+          # overlay was born as a channel-lag bridge. Rechecked 2026-08-25
+          # against bun's LATEST file, 1.4.0 was the newest release then.
+          #
+          # RECHECKED 2026-11-02. Upstream's releases page names 1.4.4 as the
+          # latest release and nixpkgs carries 1.4.2, so the version below moves
+          # to 1.4.4. Check both again before the next bump.
           #
           # The obvious fix is `bun upgrade`, and it cannot work here. This bun
           # lives in the read-only nix store, so the upgrader cannot replace its
@@ -69,12 +79,12 @@
           # system hits the package's own "Unsupported system" throw, loud on
           # purpose. Hashes came from `nix store prefetch-file` on each zip.
           #
-          # Verified: the rebuilt store binary prints "1.4.0" from `bun
+          # Verified: the rebuilt store binary prints "1.4.4" from `bun
           # --version` on x86_64-linux. Unverified on aarch64-darwin, no such
           # machine available.
           bunOverlay = final: prev: {
             bun = prev.bun.overrideAttrs (old: {
-              version = "1.4.0";
+              version = "1.4.4";
               # THE WARNING THIS FLAG SILENCES IS A FALSE POSITIVE. Since the
               # nixpkgs bump on 2026-08-23 every eval of this flake printed:
               #
@@ -105,12 +115,12 @@
                   # bun intends for this hardware. Keep the difference in mind if
                   # this overlay is ever copied to an older machine.
                   "x86_64-linux" = prev.fetchurl {
-                    url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.0/bun-linux-x64.zip";
-                    hash = "sha256-LQP7X7g6yLVnrKCigbLOGhoZ1Ij1bClo2Iw/Jekv5FI=";
+                    url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64.zip";
+                    hash = "sha256-v4zL+ysLgBWeD5ptFcVTF63YB3U028YTCj7bUvzLOVw=";
                   };
                   "aarch64-darwin" = prev.fetchurl {
-                    url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.0/bun-darwin-aarch64.zip";
-                    hash = "sha256-xmnpf2Fk4cluBwF0jbmN+ndJKQjL2DlMdVcTSnNd44E=";
+                    url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-darwin-aarch64.zip";
+                    hash = "sha256-wkDX8My5DCY6hJ/NsJt+5iYw2SE0jtaq/ahrnVd7xRA=";
                   };
                 };
               };
@@ -134,58 +144,37 @@
           # nixpkgs reads 2.9.5, which is exactly the delete condition the old
           # comment wrote down.
           #
-          # bun is NOT in the same position and bunOverlay above stays. nixpkgs
-          # still packages 1.3.13 against upstream 1.4.0.
+          # bun is in a DIFFERENT position and bunOverlay above stays. nixpkgs
+          # caught up on version, 1.4.2 at the 2026-11-02 lock, but it still
+          # ships the baseline zip. See the overlay's own comment.
 
-          # TEMPORARY, DELETE when nixos-unstable ships prismlauncher >= 11.1.1.
-          # Check after a flake update with:
+          # PRISMLAUNCHER OVERLAY REMOVED 2026-11-02, because nixpkgs caught up.
           #
-          #   nix eval nixpkgs#legacyPackages.x86_64-linux.prismlauncher.version
+          # An overlay lived here from 2026-10-03. 11.1.1 is a SECURITY hotfix,
+          # released upstream on 2026-09-28, whose only change is PR #6183,
+          # "Prevent path traversal in CurseForge modpack overrides". Four of
+          # the six instances on this machine are CurseForge packs, so waiting
+          # for the channel was not acceptable. The overlay moved version and
+          # src together, the way the nixpkgs master bump did.
           #
-          # 11.1.1 is a SECURITY hotfix, released upstream on 2026-09-28. Its
-          # only change is PR #6183, "Prevent path traversal in CurseForge
-          # modpack overrides". Under 11.1.0 a crafted CurseForge pack can write
-          # files outside its own instance directory. Four of the six instances
-          # on this machine are CurseForge packs, the exact input the bug trusts.
+          # Its delete condition was "nixos-unstable ships prismlauncher >=
+          # 11.1.1". Verified 2026-11-02: prismlauncher.version reads 11.1.1 at
+          # the locked nixpkgs, and it already did at the previous lock
+          # 02c087f3 from 2026-10-20. The overlay had been redundant for one
+          # bump. Removing it also picks up the libxkbcommon wrapper change
+          # master made beside the hotfix, which the overlay did not carry.
           #
-          # As of 2026-10-03 nixpkgs master packages 11.1.1. nixos-unstable and
-          # nixpkgs-unstable both still read 11.1.0, so a flake update alone
-          # does not pick it up yet.
-          #
-          # The obvious override is `version` alone, and it fails SILENTLY.
-          # nixpkgs fetches src by tag with a fixed hash. A fixed-output path
-          # depends only on that hash, so the old hash keeps the old store path.
-          # Overriding only version resolves src to the 11.1.0 tarball's path
-          # while its tag reads 11.1.1. cache.nixos.org holds that path, so Nix
-          # substitutes the old source and never fetches the new tag. The result
-          # is 11.1.0 code labelled 11.1.1. Both fields move together below,
-          # which is the whole of the nixpkgs master bump.
-          #
-          # Only the unwrapped package is overridden. The prismlauncher wrapper
-          # receives it through `final`, so the wrapper needs no edit. Master
-          # also adds libxkbcommon to the wrapper. That change is unrelated to
-          # the hotfix and is not carried here.
-          #
-          # Worlds are not in the store. They live under
-          # ~/.local/share/PrismLauncher/instances, which a switch never touches.
-          prismOverlay = final: prev: {
-            prismlauncher-unwrapped = prev.prismlauncher-unwrapped.overrideAttrs (old: {
-              version = "11.1.1";
-              # Hash read from nixpkgs master's package.nix, not prefetched here.
-              src = prev.fetchFromGitHub {
-                owner = "PrismLauncher";
-                repo = "PrismLauncher";
-                tag = "11.1.1";
-                hash = "sha256-vSCiCDatoRnA1vpqLDuelC/2cBCKp+fXGT/O0DYjHuk=";
-              };
-            });
-          };
+          # One trap from the overlay's own comment is worth keeping. A bare
+          # `version` override on this package fails SILENTLY. src is fetched
+          # by tag with a fixed hash, so the old hash keeps the old store path
+          # and cache.nixos.org substitutes it. The result is old code under a
+          # new version string. Move version and src together, always.
 
           mkHome = system: home-manager.lib.homeManagerConfiguration {
             pkgs = import nixpkgs {
               inherit system;
               config.allowUnfree = true;
-              overlays = [ bunOverlay prismOverlay ];
+              overlays = [ bunOverlay ];
             };
             # `self` + `system` let home modules reach the flake's own outputs
             # (home/graphics.nix installs self.legacyPackages.${system}.nixGLNvidia,
