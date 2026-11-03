@@ -13,9 +13,9 @@
 {
   # Guarded to Linux. The flake applies this home.nix to aarch64-darwin too, and
   # this list holds packages with no darwin build. wineWow64Packages.stable is a
-  # Linux-only WoW64 split by construction, and eclipses.eclipse-java carries
-  # Linux-only meta.platforms. Either one throws "not available on the requested
-  # hostPlatform" and aborts darwin eval the moment the list is forced. The rest
+  # Linux-only WoW64 split by construction. It throws "not available on the
+  # requested hostPlatform" and aborts darwin eval once the list is forced.
+  # eclipses.eclipse-java was the other such package until 2026-11-02. The rest
   # are Linux desktop and dev apps, and the machine this repo reproduces is Linux,
   # so they belong inside one guard rather than a per-package split. lib.optionals
   # drops the whole list to empty off Linux. Unverified on darwin, no such machine
@@ -46,7 +46,13 @@
     # par with the snaps they replace, so exact-version matching is not needed.
     bruno                  # API client
     dbeaver-bin            # SQL GUI. Binary: dbeaver
-    eclipses.eclipse-java  # Eclipse IDE for Java
+    # ECLIPSE LEFT NIX 2026-11-02. eclipses.eclipse-java sat here from the
+    # de-snap. It ran, and then it could not update. p2 writes into the
+    # install and the store is read only. Oomph's startup tasks and Help >
+    # Check for Updates both died on .eclipseproduct in the store. The IDE now
+    # comes from upstream's tarball through bootstrap.sh eclipse_ide, into
+    # ~/.local/opt/eclipse where p2 can write. home/eclipse.nix owns its
+    # launcher entry. The error and the rejected alternatives are there.
     ghidra                 # reverse engineering
     halloy                 # IRC client
     keepassxc              # password manager

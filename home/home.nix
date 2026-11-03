@@ -22,6 +22,7 @@
     ./secrets.nix
     ./steam.nix
     ./open-cad-studio.nix
+    ./eclipse.nix
     ./flameshot.nix
     ./editors.nix
     ./syncthing.nix

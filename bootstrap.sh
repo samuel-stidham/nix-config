@@ -1163,7 +1163,15 @@ virtualbox_extras() {
       # sudo install, and a predictable name in a world-writable dir is a symlink
       # swap risk on the privileged step. Cleaned on return.
       td="$(mktemp -d)"
-      trap 'rm -rf "$td"' RETURN
+      # SELF-CLEARING TRAP. A RETURN trap set in a function outlives it when
+      # that function was called from another function. Every section here is,
+      # since main runs them all. The bare form fired again when main returned,
+      # where $td was out of scope, and set -u killed the script with "td:
+      # unbound variable" after the section had already succeeded. Found on
+      # 2026-11-02 when eclipse_ide copied the pattern and exited 1 after a
+      # clean install. Clearing the trap on its first firing is the whole fix.
+      # aws_cli and eclipse_ide carry the same form.
+      trap 'rm -rf "$td"; trap - RETURN' RETURN
       curl -fL -o "$td/$f" "https://download.virtualbox.org/virtualbox/${ver}/${f}"
       sudo VBoxManage extpack install --replace "$td/$f"
       ;;
@@ -2476,7 +2484,7 @@ aws_cli() {
   # it works on Bazzite too. unzip comes from Nix (cli.nix).
   local tmp arch
   tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' RETURN   # clean up even if a step below fails under set -e
+  trap 'rm -rf "$tmp"; trap - RETURN' RETURN   # self-clearing, see virtualbox_extras
   # Arch from uname -m, not hardcoded x86_64. AWS names the zip
   # awscli-exe-linux-<arch> where arch is x86_64 or aarch64, exactly what uname -m
   # prints on those, so an aarch64 box no longer downloads and runs the x86_64
@@ -2520,6 +2528,69 @@ ocaml() {
   echo "  opam install dune utop ocaml-lsp-server ocamlformat"
 }
 
+eclipse_ide() {
+  log "Eclipse IDE for Java Developers"
+  # Upstream's own tarball into a prefix this user can write, deliberately not
+  # Nix. eclipses.eclipse-java lived in home/apps.nix until 2026-11-02 and ran
+  # fine until anything asked p2 to change the install. Oomph's setup tasks at
+  # startup and Help > Check for Updates both died with:
+  #   An error occurred while uninstalling
+  #   Backup of file .../eclipse-java-4.41/eclipse/.eclipseproduct failed.
+  #   java.nio.file.AccessDeniedException
+  # The store is read only by design, and Eclipse updates itself in place, so
+  # the two cannot meet. Pinning plugins through eclipseWithPlugins would keep
+  # the IDE in Nix. Every update would still wait on a lock bump, which is the
+  # thing Sam wanted gone. home/eclipse.nix owns the launcher entry.
+  #
+  # Not a .deb, because there is none. packages.ubuntu.com has only
+  # eclipse-debian-helper, eclipse-titan and eclipse-tracecompass, none of them
+  # the IDE. eclipse.org ships only the Installer and tar.gz for Linux. Both
+  # read through browse on 2026-11-02. The Installer is a GUI wizard, so the
+  # tarball is the form a script can reproduce.
+  #
+  # ~/.local/opt rather than /opt, because p2 runs as the user and writes into
+  # the install. A root-owned /opt/eclipse fails exactly the way the store did.
+  # No sudo here, which also makes it work unchanged on the atomic base.
+  #
+  # RE-RUNS DO NOT RE-EXTRACT. Once the directory exists it is p2's, and it may
+  # hold updates newer than the pinned tarball. Unpacking over it would roll
+  # those back and corrupt the p2 profile. Delete the directory to start over.
+  #
+  # The checksum file comes from the same host as the archive. It proves the
+  # download arrived intact. The release directory holds .sha512 files and
+  # nothing stronger, so authenticity rests on TLS to download.eclipse.org.
+  # The 2026-09 R tarball bundles a JustJ JRE 25.0.4, so no -vm line is needed
+  # and the Nix JDKs are not involved.
+  local prefix="$HOME/.local/opt/eclipse"
+  if [ -x "$prefix/eclipse" ]; then
+    echo "Eclipse already present at $prefix. It updates itself in place, so leaving it."
+    echo "To reinstall from the pinned tarball: rm -rf $prefix, then re-run this section."
+    return
+  fi
+  local release="2026-09" arch tmp name url
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64|aarch64|riscv64) ;;
+    *)
+      echo "No Eclipse tarball for $arch. eclipse.org ships x86_64, aarch64 and riscv64." >&2
+      return 1
+      ;;
+  esac
+  name="eclipse-java-${release}-R-linux-gtk-${arch}.tar.gz"
+  url="https://download.eclipse.org/technology/epp/downloads/release/${release}/R/${name}"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"; trap - RETURN' RETURN   # self-clearing, see virtualbox_extras
+  curl -fsSL -o "$tmp/$name" "$url"
+  curl -fsSL -o "$tmp/$name.sha512" "$url.sha512"
+  # The published file reads "<hash> *<name>", which sha512sum -c takes as is.
+  (cd "$tmp" && sha512sum -c --quiet "$name.sha512")
+  tar -xzf "$tmp/$name" -C "$tmp"
+  mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
+  mv "$tmp/eclipse" "$prefix"
+  ln -sfn "$prefix/eclipse" "$HOME/.local/bin/eclipse"
+  echo "Eclipse $(sed -n 's/^version=//p' "$prefix/.eclipseproduct") installed at $prefix"
+}
+
 all() {
   detect_os
   echo "Detected FAMILY=$FAMILY PKG=$PKG ATOMIC=$ATOMIC"
@@ -2550,6 +2621,7 @@ all() {
   aws_cli
   ocaml
   calibre
+  eclipse_ide
   log "Done. Reboot if a driver or a layered package changed."
 }
 

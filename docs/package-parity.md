@@ -301,7 +301,8 @@ one system wide.
 
 Several installs are not distro packages. The Flatpak apps, the git-checkout
 installs such as Doom Emacs and LazyVim, and the self-updating binaries such as
-Claude Code, the AWS CLI, calibre and Tailscale all fall outside `pkg_install`.
+Claude Code, the AWS CLI, calibre, Eclipse and Tailscale all fall outside
+`pkg_install`.
 They install the same way on every family by their own means, so they need no
 parity row. Calibre's X11 dependency is a distro package
 and does have a row above. Tailscale installs through its own distro-aware

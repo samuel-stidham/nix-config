@@ -37,7 +37,7 @@ dev-session
 direnv-2.38.2
 dotnet-wrapped-combined
 duckdb-1.5.5
-eclipse-java-4.41
+eclipse.desktop
 elixir-1.18.6
 emacs-all-the-icons-fonts-5.0.0
 emacs-gtk3-31.1
