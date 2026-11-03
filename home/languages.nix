@@ -147,6 +147,17 @@ in
     leiningen
     babashka
 
+    # Maven. Not installed anywhere before 2026-11-02. Eclipse's embedded m2e
+    # was the only Maven on the box. 3.10.0 is the latest release on
+    # maven.apache.org that day and the pinned nixpkgs carries the same, so
+    # nothing is behind. The wrapper exports JAVA_HOME as a default onto
+    # nixpkgs' openjdk-headless 21.0.12.1. That is the same version as the
+    # temurin 21 leading on PATH, so mvn and java agree. An override onto
+    # temurin-bin-21 would drop the second JDK from the closure. The argument
+    # was already renamed once, jdk to jdk_headless, so the override is not
+    # worth its breakage. A JAVA_HOME in the environment still wins.
+    maven
+
     # OCaml is NOT from Nix. TOMBSTONE: this list held ocaml, opam, dune_3,
     # ocamlPackages.utop, ocamlPackages.ocaml-lsp and ocamlformat. They are gone on
     # purpose. OCaml development is switch-based, and opam is the toolchain manager

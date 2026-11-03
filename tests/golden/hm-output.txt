@@ -117,6 +117,7 @@ lua-5.5.1
 lua5.5-luarocks-3.13.0-1
 mailutils-3.21
 man-db-2.13.1
+maven-3.10.0
 meson-1.12.1
 msmtp-1.8.32
 neovim-0.12.6
