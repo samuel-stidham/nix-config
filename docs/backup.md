@@ -70,7 +70,7 @@ the savings.
 | `~/forgejo` | Critical infra. See the database note below. |
 | `~/sites` | The `*.test` project roots. |
 | `~/.local/share/PrismLauncher/instances` | Worlds, JourneyMap, **and the exact mod versions**. |
-| `~/snap/firefox/.../firefox` | The Firefox profile. See below. |
+| `~/.mozilla/firefox` | The Firefox profile. See below. |
 | `~/Desktop` | Safety net. Should be near empty after the reorg. |
 | safetybox vault + identity, `~/.passage` | The secret chain. Encrypted at rest already. |
 | `~/.ssh`, `~/.gnupg` | Keys. |
@@ -88,15 +88,21 @@ profile directory.
 Backing the profile up is what makes Firefox return identical, and it replaces the
 entire per-extension export/import dance.
 
-On Bazzite the path changes to the Flatpak location, so override it:
+The path is probed at backup time. `~/.mozilla/firefox` wins wherever Firefox is a
+native package, which is debian from Mozilla's apt repo, fedora, and suse. On
+Bazzite only the Flatpak path exists, so the probe lands there on its own.
+Override the probe only when the profile lives somewhere else:
 
 ```bash
 FIREFOX_PROFILE=~/.var/app/org.mozilla.firefox/.mozilla/firefox ./scripts/backup.sh backup
 ```
 
-> **`~/snap` must never be deleted.** It holds that profile. An earlier draft of
-> the plan listed it as "de-snapped already, delete", which would have destroyed
-> it.
+> **The profile left `~/snap` on 2026-11-01.** Firefox moved from the Ubuntu snap
+> to Mozilla's own deb and the snap was removed, so `~/snap/firefox` no longer
+> exists and the probe no longer looks there. `~/snap` is still never deleted. It
+> holds the user data of every snap that remains, and an earlier draft of the plan
+> listed it as "de-snapped already, delete" while the Firefox profile was still
+> inside. That mistake is the reason the rule stays.
 
 ### Minecraft mods are backed up on purpose
 

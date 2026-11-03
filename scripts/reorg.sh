@@ -14,7 +14,9 @@
 #   - Nothing is deleted that was not on the explicit list.
 #   - The 117G Roms delete is GUARDED. Read that guard's own comment before
 #     trusting it. It refuses on any doubt, including doubt about itself.
-#   - ~/snap is never touched. It holds the Firefox profile.
+#   - ~/snap is never touched. It held the Firefox profile until 2026-11-01,
+#     when Firefox moved to Mozilla's deb, and it still holds the user data of
+#     every snap that remains.
 #   - Moves never clobber: if the destination exists, it skips and warns.
 #
 # ONE honest exception to "changes nothing". The Roms guard reads both trees
@@ -422,7 +424,7 @@ del "$HOME/latex"                     # build artifacts
 del "$HOME/PyCharmMiscProject"        # empty
 
 say ""
-say "NOT touching ~/snap: it holds the Firefox profile."
+say "NOT touching ~/snap: it holds the user data of every remaining snap."
 say "NOT touching ~/.cache: it regenerates, and removing it under a running"
 say "  desktop session is more disruptive than the 13G is worth."
 

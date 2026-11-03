@@ -165,5 +165,7 @@ installers.
 The system layer stays on the distro's own package manager. That is apt, dnf,
 rpm-ostree, or zypper by family. It owns the kernel, Cinnamon, the NVIDIA driver,
 and the core libraries. Electron and Chromium apps use each vendor's own repo, a
-`.deb` on apt or an rpm repo on dnf, and Flatpak on an atomic base. Desktop apps
+`.deb` on apt or an rpm repo on dnf, and Flatpak on an atomic base. Firefox is
+Mozilla's own deb on apt, because Ubuntu's `firefox` package is a stub that
+installs the snap, and the distro's native package on dnf and zypper. Desktop apps
 use Flatpak.

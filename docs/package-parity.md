@@ -53,9 +53,9 @@ needs no repo step. That is stronger than a live-index read.
 
 The atomic path was verified as far as it can be off an ostree host. Every Flatpak
 id `bootstrap.sh` installs, `com.google.Chrome`, `com.visualstudio.code`,
-`org.prismlauncher.PrismLauncher`, `com.github.tchx84.Flatseal`, `org.gimp.GIMP`,
-`io.ente.auth` and `com.valvesoftware.Steam`, resolves to a real app page on
-Flathub. And the three rpm-ostree calls the code makes, `refresh-md`, `install
+`org.mozilla.firefox`, `org.prismlauncher.PrismLauncher`,
+`com.github.tchx84.Flatseal`, `org.gimp.GIMP`, `io.ente.auth` and
+`com.valvesoftware.Steam`, resolves to a real app page on Flathub. And the three rpm-ostree calls the code makes, `refresh-md`, `install
 --idempotent` and `cleanup -m`, are confirmed against the rpm-ostree binary in a
 Fedora container.
 
@@ -93,6 +93,7 @@ is resolved now by a run-time probe. Base Debian, which alone lacked a
 | virtualbox ext-pack | `virtualbox-ext-pack` | unpackaged | unpackaged | gap (fedora, suse) |
 | google-chrome-stable | `google-chrome-stable` | `google-chrome-stable` | `google-chrome-stable` | parity, vendor repo |
 | VS Code | `code` | `code` | `code` | parity, vendor repo |
+| Firefox | `firefox`, Mozilla apt repo | `firefox` | `MozillaFirefox` | renamed, vendor repo on debian |
 | RPM Fusion enablers | not applicable | `rpmfusion-free-release`, `rpmfusion-nonfree-release` | not applicable | fedora-only prerequisite |
 | Flatseal | `com.github.tchx84.Flatseal` | same | same | parity, Flathub id |
 | GIMP | `org.gimp.GIMP` | same | same | parity, Flathub id |
@@ -282,6 +283,19 @@ finds nothing, and that absence is expected, not a gap.
 and Microsoft's, not the distro. They are parity by construction, and the name was
 read off the vendor pages rather than a distro index. Do not send a reader hunting
 for `code` in the Fedora database.
+
+Firefox on debian is the one name that resolves and still installs the wrong
+thing. Ubuntu's archive `firefox` is a stub whose postinst installs the snap, so
+`apt install firefox` succeeds and hands you the snap. The name only means
+Mozilla's build once `_vendor_debian` has added `packages.mozilla.org` and pinned
+it at 1000 with the Ubuntu origin at -1. The stub carries epoch 1, so without the
+pin it outranks every real release number and comes back on the next upgrade. On
+suse the name is `MozillaFirefox`, capitals included. It was read off the
+openSUSE:Factory build tree at `api.opensuse.org`, because `software.opensuse.org`
+sat behind a proof-of-work challenge. fedora is plain `firefox`, 159.0-1.fc43 on
+`packages.fedoraproject.org`. The atomic path installs `org.mozilla.firefox` from
+Flathub only when `flatpak info` finds no copy, since Bazzite is expected to ship
+one system wide.
 
 ## Not treated as package rows
 

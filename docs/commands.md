@@ -75,7 +75,7 @@ atomic) and dispatches. Run a single section by name, or `all` for everything.
 | `virtualbox_extras` | Oracle Extension Pack (USB 2/3) and adds you to `vboxusers`. |
 | `tailscale_net` | Install Tailscale. Auth (`tailscale up`) stays yours to run. |
 | `nm_static_ip` | **Prints** the nmcli commands to pin `192.168.1.200` on both wired and WiFi. Does not run them. |
-| `vendor_apps` | Chrome and VS Code from vendor repos, or Flathub on atomic. |
+| `vendor_apps` | Firefox, Chrome and VS Code. Mozilla's apt repo on debian, the distro's own Firefox on fedora and suse, vendor repos for the rest, Flathub on atomic. |
 | `flatpaks` | Flatseal, Calibre, GIMP, PrismLauncher, Ente Auth. |
 | `system_logs` | logrotate size caps and journald retention. Debian only. |
 | `doom_emacs` | Clone Doom at a pinned SHA and `doom install`. |

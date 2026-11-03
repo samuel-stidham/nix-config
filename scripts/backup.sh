@@ -68,9 +68,14 @@ fi
 # is absent, so restic warned about the snap path the operator never had and the
 # real profile was never a backup target. That is the worst kind of miss: the
 # warning points at the wrong thing while Tier 1 data goes uncaptured. The probe in
-# resolve_backup_paths tries snap, then Flatpak, then the native path, and fails
-# loudly if none exist rather than hand restic a phantom path. FIREFOX_PROFILE in
-# the environment overrides the probe.
+# resolve_backup_paths tries the native path, then Flatpak, and fails loudly if
+# neither exists rather than hand restic a phantom path. FIREFOX_PROFILE in the
+# environment overrides the probe.
+#
+# The snap path is no longer a candidate at all. Firefox moved from the Ubuntu
+# snap to Mozilla's own deb on 2026-11-01 and the snap was removed, so the profile
+# on the reference box sits at ~/.mozilla/firefox like every native package. See
+# _vendor_debian in bootstrap.sh for the repo, the pin, and the snap removal.
 FIREFOX_PROFILE="${FIREFOX_PROFILE:-}"
 
 # The Calibre library lives on StoragePrime, not the nvme. It is still Tier 1 and
@@ -101,15 +106,21 @@ CALIBRE_LIBRARY="${CALIBRE_LIBRARY:-}"
 # so snapshots, restore, forget, init, mc-backup and mc-restore never call this and
 # run without the drive. Only backup does.
 resolve_backup_paths() {
-  # The Firefox profile. First existing candidate wins: snap (Ubuntu, Pop), then
-  # Flatpak (Bazzite and others), then the native RPM or deb path. An explicit
-  # FIREFOX_PROFILE skips the probe. Fail loud if nothing is found, rather than
-  # feed restic a phantom path that it would warn about and skip.
+  # The Firefox profile. First existing candidate wins: the native deb or RPM path
+  # (debian from Mozilla's apt repo, fedora, suse), then Flatpak (Bazzite). An
+  # explicit FIREFOX_PROFILE skips the probe. Fail loud if nothing is found,
+  # rather than feed restic a phantom path that it would warn about and skip.
+  #
+  # TOMBSTONE: "$HOME/snap/firefox/common/.mozilla/firefox" was the FIRST
+  # candidate here until 2026-11-01. It is gone because the snap is gone, see the
+  # FIREFOX_PROFILE comment at the top. Do not restore it as a last fallback
+  # either. It would let a stale ~/snap/firefox satisfy the probe on a box where
+  # the native profile does not exist yet, and the loud failure this probe exists
+  # for would never fire.
   if [ -z "$FIREFOX_PROFILE" ]; then
     for _ff_candidate in \
-      "$HOME/snap/firefox/common/.mozilla/firefox" \
-      "$HOME/.var/app/org.mozilla.firefox/.mozilla/firefox" \
-      "$HOME/.mozilla/firefox"; do
+      "$HOME/.mozilla/firefox" \
+      "$HOME/.var/app/org.mozilla.firefox/.mozilla/firefox"; do
       if [ -d "$_ff_candidate" ]; then
         FIREFOX_PROFILE="$_ff_candidate"
         break
@@ -117,7 +128,7 @@ resolve_backup_paths() {
     done
   fi
   if [ -z "$FIREFOX_PROFILE" ]; then
-    echo "No Firefox profile found at the snap, Flatpak, or native path." >&2
+    echo "No Firefox profile found at the native or Flatpak path." >&2
     echo "Set FIREFOX_PROFILE to its location, or launch Firefox once." >&2
     exit 1
   fi

@@ -1193,8 +1193,84 @@ _vendor_debian() {
   echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null
   # TablePlus used to be here from its own apt repo. It is gone now, replaced by
   # dbeaver-bin in home/apps.nix, which Nix installs the same way everywhere.
+  #
+  # Firefox, from Mozilla's own apt repo. Ubuntu's archive `firefox` is a stub deb
+  # whose postinst installs the snap, so `apt install firefox` on a bare Ubuntu
+  # hands you the snap and reports success. The snap keeps its profile under
+  # ~/snap/firefox, a path no other family uses, and scripts/backup.sh used to
+  # probe that path first. The reference box moved off the snap to this repo on
+  # 2026-11-01, so the profile sits at ~/.mozilla/firefox like every native
+  # package and backup.sh probes that path first.
+  #
+  # THREE FILES, and the third is the one that gets skipped. The key and the
+  # sources entry are the obvious two. The preferences pin is what makes it
+  # stick. The archive stub is version 1:1snap1 and Mozilla's build is
+  # 159.0~build1. The epoch makes the stub sort ABOVE every real release, so
+  # without the pin the next `apt upgrade` replaces Mozilla's build with the stub
+  # and the stub reinstalls the snap. Two pins. Everything from
+  # packages.mozilla.org at 1000, which wins over any distro version regardless
+  # of number. Then the Ubuntu origin's firefox at -1, so the stub is never a
+  # candidate even on a run where the Mozilla index is unreachable. `o=Ubuntu`
+  # names the only origin that ships a stub. Mint and Pop ship real debs and the
+  # 1000 pin puts Mozilla's build ahead of those on its own.
+  #
+  # The key is checked by fingerprint BEFORE it is installed, and a mismatch
+  # refuses the whole repo rather than trusting whatever the download returned.
+  # The fingerprint was read off the keyring already installed on the reference
+  # box with `gpg --show-keys`, where apt verifies packages.mozilla.org against it
+  # on every update. Mozilla's install page sits behind a CAPTCHA and the raw key
+  # file renders as nothing in a headless browser, so neither could be re-read
+  # for this comment.
+  #
+  # The key stays ASCII armoured. deb822 Signed-By takes an .asc directly, so
+  # there is no dearmor step and no --yes gotcha here. `install -D` makes the
+  # keyrings directory on a box that lacks it and overwrites in place on a re-run.
+  local _moz_key _moz_fpr
+  _moz_key="$(mktemp)"
+  wget -qO "$_moz_key" https://packages.mozilla.org/apt/repo-signing-key.gpg
+  _moz_fpr="$(gpg --show-keys --with-colons "$_moz_key" 2>/dev/null | awk -F: '/^fpr:/{print $10; exit}')"
+  if [ "$_moz_fpr" != "35BAA0B33E9EB396F59CA838C0BA5CE6DC6315A3" ]; then
+    rm -f "$_moz_key"
+    echo "Mozilla apt signing key fingerprint mismatch (got '$_moz_fpr')." >&2
+    echo "Refusing to add packages.mozilla.org. Check the key by hand first." >&2
+    return 1
+  fi
+  sudo install -D -m 0644 "$_moz_key" /etc/apt/keyrings/packages.mozilla.org.asc
+  rm -f "$_moz_key"
+  sudo tee /etc/apt/sources.list.d/mozilla.sources >/dev/null <<'EOF'
+Types: deb
+URIs: https://packages.mozilla.org/apt
+Suites: mozilla
+Components: main
+Signed-By: /etc/apt/keyrings/packages.mozilla.org.asc
+EOF
+  sudo tee /etc/apt/preferences.d/mozilla >/dev/null <<'EOF'
+Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000
+
+Package: firefox
+Pin: release o=Ubuntu
+Pin-Priority: -1
+EOF
   pkg_refresh
-  pkg_install google-chrome-stable code
+  pkg_install google-chrome-stable code firefox
+  # Remove the snap once the deb is in. A fresh Ubuntu ships the snap, the two
+  # coexist, and that leaves two Firefox entries in the launcher with two
+  # profiles. Remove it only when its user data directory is ABSENT, so a profile
+  # that was never migrated cannot vanish behind the operator's back. `snap
+  # remove` takes an automatic snapshot, but a snapshot is not a migration. When
+  # the directory is present, say so and leave both installed. `snap list
+  # firefox` exits 0 only when that snap is installed, which also makes this a
+  # no-op on Mint, where snapd is absent, and on the reference box.
+  if command -v snap >/dev/null 2>&1 && snap list firefox >/dev/null 2>&1; then
+    if [ -d "$HOME/snap/firefox" ]; then
+      echo "The firefox snap is still installed and ~/snap/firefox holds a profile." >&2
+      echo "Copy what you need into ~/.mozilla/firefox, then: sudo snap remove firefox" >&2
+    else
+      sudo snap remove firefox
+    fi
+  fi
   echo "Add 1password, discord, signal, slack from their vendor repos."
 }
 
@@ -1219,7 +1295,12 @@ gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
   pkg_refresh
-  pkg_install google-chrome-stable code
+  # Firefox is Fedora's own package, no vendor repo. Fedora Workstation ships it,
+  # so this is a no-op there and a parity step on a spin that does not. The name
+  # was read off packages.fedoraproject.org on 2026-11-01, firefox 159.0-1.fc43,
+  # the same release the debian family gets from Mozilla's repo. Unverified on
+  # fedora, no such machine available.
+  pkg_install google-chrome-stable code firefox
   # TablePlus is gone, replaced by dbeaver-bin in home/apps.nix.
   echo "Add 1password, discord, signal, slack from their vendor repos."
 }
@@ -1230,6 +1311,16 @@ _vendor_atomic() {
   flatpak_install \
     com.google.Chrome \
     com.visualstudio.code
+  # Firefox is the Flathub build here, org.mozilla.firefox, read off
+  # flathub.org/apps/org.mozilla.firefox on 2026-11-01 at 159.0. Bazzite is
+  # expected to have it already as a SYSTEM flatpak, and flatpak_install installs
+  # --user, so an unconditional install could put a second copy beside the first
+  # and the launcher would show two. `flatpak info` sees both installations, so
+  # probe it and install only when neither has it. Unverified on Bazzite, no such
+  # machine available.
+  if ! flatpak info org.mozilla.firefox >/dev/null 2>&1; then
+    flatpak_install org.mozilla.firefox
+  fi
   # TablePlus is gone, replaced by dbeaver-bin in home/apps.nix.
   echo "Add 1password, discord, signal, slack from Flathub."
 }
@@ -1273,7 +1364,14 @@ gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
   pkg_refresh
-  pkg_install google-chrome-stable code
+  # Firefox is openSUSE's own package and the name is NOT firefox. It is
+  # MozillaFirefox, capital M and capital F, and zypper is case sensitive, so the
+  # lowercase name fails with "not found in package names". Read off the
+  # openSUSE:Factory build tree at api.opensuse.org on 2026-11-01, where the
+  # binary is MozillaFirefox-158.0.1-1.1.x86_64.rpm. software.opensuse.org sat
+  # behind a proof-of-work challenge and could not be read. Unverified on suse,
+  # no such machine available.
+  pkg_install google-chrome-stable code MozillaFirefox
   echo "Add 1password, discord, signal, slack from their vendor repos."
 }
 
