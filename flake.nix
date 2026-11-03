@@ -2,30 +2,7 @@
   description = "samuelstidham home-manager configuration and local dev services";
 
   inputs = {
-    # PINNED 2026-10-22 to one nixos-unstable-small commit, not to a branch.
-    #
-    # PHP 8.5.12 fixes CVE-2026-109618 and CVE-2026-109619. Both allow
-    # unauthenticated remote code execution through php-fpm, which nginx
-    # exposes on 0.0.0.0:443 here. nixpkgs bumped php85 on master on
-    # 2026-10-21 and nixos-unstable-small carried it the same evening.
-    #
-    # The obvious fix was `nix flake update nixpkgs` against nixos-unstable.
-    # It ran, moved the lock to 02c087f3 (2026-10-20), and left PHP at 8.5.11.
-    # That branch gates on the full Hydra test set and lags small by days.
-    # Nothing in the output said the fix was missing. A lock update that
-    # looks like an upgrade and is not one is the failure this pin records.
-    #
-    # Why a commit and not the small branch: small skips the tests that cover
-    # the heavy parts of this config, CUDA, Steam and nixGL. One commit that
-    # was dry-run against this home config is a smaller surface than a
-    # moving branch. Return to "github:NixOS/nixpkgs/nixos-unstable" once
-    # that branch is past dce1caf5. Check with:
-    #   nix eval --raw github:NixOS/nixpkgs/nixos-unstable#php85.version
-    #
-    # Verified: php85 evaluates to 8.5.12 at this commit. A dry run of the
-    # sites stack here fetched php-8.5.12 from cache.nixos.org and compiled
-    # only the extensions outside Hydra's default set.
-    nixpkgs.url = "github:NixOS/nixpkgs/dce1caf58d1a943af38b376e824a0d036ec3eea7";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     home-manager = {
       url = "github:nix-community/home-manager";

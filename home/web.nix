@@ -47,6 +47,16 @@ let
   runDir = "${config.home.homeDirectory}/.local/share/dev-services";
   certDir = "${runDir}/certs";
   homeDomain = "home.samuelstidham.me";
+  # The grocerylist test instance. nginx proxies grocerylist.test/api to it and
+  # `make deploy` in the frontend repo restarts it, so both sides must agree on
+  # the binary path and the port. The binary is deploy output under siteRoot,
+  # never a checkout path, so the unit survives the repo moving. The database
+  # sits outside the site directory because deploy recreates that directory
+  # whole, and test data should outlive a deploy.
+  grocerylistTest = {
+    bin = "${siteRoot}/grocerylist/bin/grocerylist";
+    db = "${config.home.homeDirectory}/.local/share/grocerylist/test.sqlite";
+  };
 
   # Shared serving logic for a dev site, included by every vhost that serves
   # files. The driver picks the document root: public/ (Laravel, Symfony 4+,
@@ -177,6 +187,50 @@ let
         }
       }
 
+      # ---- grocerylist, production ------------------------------------------
+      # The installed grocerylist daemon (~/Code/samuel-stidham/grocery-list-frontend,
+      # `make install`). Same shape as forgejo and atlantis. The core nutrient API
+      # on 8471 is not proxied: only this daemon talks to it.
+      server {
+        listen 443 ssl;
+        http2 on;
+        server_name grocerylist.${homeDomain};
+        ssl_certificate     ${certDir}/${homeDomain}.crt;
+        ssl_certificate_key ${certDir}/${homeDomain}.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        # A database restore uploads the whole app.sqlite.
+        client_max_body_size 256m;
+        location / {
+          proxy_pass http://127.0.0.1:8472;
+          include ${proxyHeaders};
+        }
+      }
+
+      # ---- grocerylist.test, the test site -----------------------------------
+      # Static build written by `make deploy` into ~/sites/grocerylist/public.
+      # /api goes to the grocerylist-test unit below on 8473, never to the
+      # daemon, so a test build cannot touch production data. 502 only before
+      # the first `make deploy`, the same honest failure the PHP dev sites give.
+      # try_files is the SPA fallback the file driver cannot give.
+      server {
+        listen 80;
+        listen 443 ssl;
+        server_name grocerylist.test;
+        ssl_certificate     ${certDir}/$ssl_server_name.crt;
+        ssl_certificate_key ${certDir}/$ssl_server_name.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        root ${siteRoot}/grocerylist/public;
+        client_max_body_size 256m;
+        location /api/ {
+          proxy_pass http://127.0.0.1:8473;
+          include ${proxyHeaders};
+        }
+        location / {
+          try_files $uri /index.html;
+        }
+        location ~ /\.(?!well-known).* { deny all; }
+      }
+
       # ---- dev sites, real cert, reachable from the mac ---------------------
       # One vhost for every site in ~/sites. forgejo and atlantis are matched by
       # the exact-name servers above, which win over this regex, so they never
@@ -268,6 +322,31 @@ in
       ExecReload = "${pkgs.nginx}/bin/nginx -c ${nginxConf} -p ${runDir}/nginx -s reload";
       Restart = "on-failure";
       RestartSec = "5s";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
+
+  # The grocerylist test instance behind grocerylist.test/api. The production
+  # daemon on 8472 is installed by `grocerylist install` from the frontend repo
+  # and is not managed here. This one is, because it runs whatever `make deploy`
+  # last wrote into ~/sites/grocerylist, and the site should serve on its own
+  # without a `make run` left open in a terminal. ConditionPathExists keeps a
+  # machine without a deploy quiet: the unit is skipped at login, not failed,
+  # and the first `make deploy` starts it with a plain restart. It talks to the
+  # TEST core on 8474 (`make run` in the core checkout), never the production
+  # core on 8471. With that core down the app shows its core banner and keeps
+  # serving its own data. stderr goes to the journal:
+  # `journalctl --user -u grocerylist-test`.
+  systemd.user.services.grocerylist-test = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    Unit = {
+      Description = "grocerylist test instance for grocerylist.test";
+      ConditionPathExists = grocerylistTest.bin;
+    };
+    Service = {
+      Type = "simple";
+      ExecStart = "${grocerylistTest.bin} serve --listen 127.0.0.1:8473 --db ${grocerylistTest.db} --core-url http://127.0.0.1:8474";
+      Restart = "on-failure";
+      RestartSec = "2s";
     };
     Install.WantedBy = [ "default.target" ];
   };

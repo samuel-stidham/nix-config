@@ -2,10 +2,10 @@
 age-1.3.2
 alacritty-0.17.0
 alacritty-0.17.0-terminfo
-atuin-18.21.0
+atuin-18.23.0
 autoconf-2.73
 automake-1.18.1
-babashka-1.13.220
+babashka-1.13.225
 bat-0.26.1
 bazel-7.6.0
 binutils-2.46
@@ -16,37 +16,37 @@ bruno-4.0.0
 btop-1.4.7
 bun-1.4.0
 cabal-install-3.16.1.0
-cargo-1.98.1
-ccache-4.13.6
-ccache-4.13.6-man
+cargo-1.99.0
+ccache-4.14.1
+ccache-4.14.1-man
 check-0.15.2
 clang-22.1.8-nogeneric
 clang-analyzer-21.1.8
 clang-tools-22.1.8
-clippy-1.98.1
+clippy-1.99.0
 clojure-1.12.6.1673
-cmake-4.4.2
+cmake-4.4.4
 composer-2.10.3
-coreutils-9.11
-crystal-1.19.1-bin
+coreutils-9.12
+crystal-1.21.1-bin
 curlie-1.8.2
-dbeaver-bin-26.2.0
+dbeaver-bin-26.2.2
 delve-1.27.2
-deno-2.9.6
+deno-2.9.7
 dev-session
-direnv-2.37.1
+direnv-2.38.2
 dotnet-wrapped-combined
 duckdb-1.5.5
 eclipse-java-4.41
 elixir-1.18.5
 emacs-all-the-icons-fonts-5.0.0
 emacs-gtk3-31.1
-erlang-28.5.0.7
+erlang-28.5.0.8
 exercism-3.5.8
 eza-0.23.5
 eza-0.23.5-man
-fastfetch-2.68.1
-fastfetch-2.68.1-man
+fastfetch-2.70.0
+fastfetch-2.70.0-man
 fd-10.5.0
 figlet-2.2.5
 fish-4.9.3
@@ -54,37 +54,37 @@ flameshot-14.0.0
 flawfinder-2.0.20
 flex-2.6.4
 freeze-1.3
-fzf-0.74.4
-fzf-0.74.4-man
+fzf-0.74.5
+fzf-0.74.5-man
 gcc-wrapper-16.2.0
 gcc-wrapper-16.2.0-man
 gci-0.14.0
 gdb-17.2
-gh-2.101.0
+gh-2.102.0
 ghc-9.10.3
-ghidra-12.1.2
+ghidra-12.1.4
 ghostty-1.3.1
-git-2.55.0
+git-2.56.0
 gitleaks-8.30.1
-git-lfs-3.7.1
-glibc-2.42-84-bin
+git-lfs-3.8.0
+glibc-2.44-57-bin
 glow-3.0.0
 gnumake-4.4.1
 gnumake-4.4.1-man
 gnuplot-6.0.5
-go-1.26.7
+go-1.26.9
 gofumpt-0.12.0
-golangci-lint-2.14.0
-gopls-0.23.0
+golangci-lint-2.15.0
+gopls-0.24.0
 gosec-2.29.0
 go-task-3.53.1
 gotests-1.9.0
-go-tools-2026.2.1
-govulncheck-1.8.0
+go-tools-2026.2.2
+govulncheck-1.9.0
 gperf-3.3
 guile-3.0.11
 gum-2.0.2
-halloy-2026.8
+halloy-2026.9
 haskell-language-server-2.13.0.0
 helix-25.07.1
 hm-session-vars.fish
@@ -94,13 +94,13 @@ home-manager
 home-manager-path
 htop-3.5.3
 htop-3.5.3-man
-imagemagick-7.1.2-31
+imagemagick-7.1.2-34
 impl-1.5.0
 include-what-you-use-0.26
 jetbrains-toolbox-3.8.1.88030
 jq-1.8.2-bin
 jq-1.8.2-man
-julia-bin-1.13.1
+julia-bin-1.13.2
 kakoune-2026.05.21
 keepassxc-2.7.12
 lego-5.5.1
@@ -113,13 +113,13 @@ lld-22.1.8
 lldb-22.1.8
 llvm-22.1.8
 love-11.5
-lua-5.5.0
+lua-5.5.1
 lua5.5-luarocks-3.13.0-1
 mailutils-3.21
 man-db-2.13.1
-meson-1.10.2
+meson-1.12.1
 msmtp-1.8.32
-neovim-0.12.5
+neovim-0.12.6
 nerd-fonts-blex-mono-3.5.0+2.004-6.4.0-
 nerd-fonts-caskaydia-cove-3.5.0+2407.24
 nerd-fonts-fira-code-3.5.0+6.2
@@ -131,45 +131,44 @@ nerd-fonts-symbols-only-3.5.0
 nerd-fonts-terminess-ttf-3.5.0+4.49.2
 ninja-1.13.2
 nixGLNvidia
-nodejs-24.20.0
-non-nixos-gpu
-obsidian-1.13.7
+nodejs-24.21.0
+obsidian-1.14.4
 octave-11.3.0
-odin-dev-2026-09
+odin-dev-2026-10
 open-cad-studio
 open-cad-studio.desktop
 open-cad-studio-icon
 open-cad-studio-update
-openssl-3.6.4-bin
-openssl-3.6.4-man
+openssl-3.5.9-bin
+openssl-3.5.9-man
 pandoc-cli-3.7.0.2
 passage-1.7.4a2
 pay-respects-0.8.8
-php-with-extensions-8.5.11
+php-with-extensions-8.5.12
 pkg-config-wrapper-0.29.2
 pkg-config-wrapper-0.29.2-man
 prismlauncher-11.1.1
 python3.14-httpie-3.2.4
-python3.14-poetry-2.4.3
-python3-3.14.7
+python3.14-poetry-2.5.1
+python3-3.14.8
 racket-9.3
 raylib-6.0
 restic-0.19.1
 ripgrep-15.2.0
 rsync-3.5.0
-ruby-3.4.9
-rust-analyzer-2026-09-21
-rustc-wrapper-1.98.1
-rustc-wrapper-1.98.1-man
-rustfmt-1.98.1
+ruby-3.4.11
+rust-analyzer-2026-10-12
+rustc-wrapper-1.99.0
+rustc-wrapper-1.99.0-man
+rustfmt-1.99.0
 rustlings-6.5.0
 safetybox-4.0.0
 samba-4.23.10
 samba-4.23.10-man
-sdl2-compat-2.32.72
-sdl3-3.4.16
-shards-0.19.1
-shared-mime-info-2.4
+sdl2-compat-2.32.74
+sdl3-3.4.18
+shards-0.20.0
+shared-mime-info-2.5.1
 shellcheck-0.11.0-bin
 shellcheck-0.11.0-doc
 shellcheck-0.11.0-man
@@ -177,33 +176,33 @@ spotify-1.2.95.453.g0eeebbed
 sqlite-3.53.3-bin
 sqlite-3.53.3-man
 stack-3.9.3
-starship-1.26.0
+starship-1.27.0
 steam.desktop
 syncthing-2.1.3
 temurin-bin-21.0.12
 texstudio-4.9.5
-tmux-3.7c
-tmux-3.7c-man
-trufflehog-3.97.9
-turso-cli-1.0.31
+tmux-3.8
+tmux-3.8-man
+trufflehog-3.99.3
+turso-cli-1.0.34
 typescript-7.0.2
 typst-0.15.1
 unzip-6.0
 valgrind-3.27.1
 valgrind-3.27.1-man
 vhs-0.12.1
-vim-9.2.1001
-vim-9.2.1001-xxd
+vim-9.2.1164
+vim-9.2.1164-xxd
 websocat-1.14.0
 wget-1.25.0
 wget-1.25.0-man
 wine-wow64-11.0
 xclip-0.13
 xh-0.26.2
-yq-go-4.53.3
-zed-editor-1.21.0
+yq-go-4.54.1
+zed-editor-1.24.2
 zellij-0.45.1
-zig-0.16.0
+zig-0.17.0
 zoxide-0.10.0
 # ===== SYSTEMD USER UNITS =====
 ## btrfs-scrub-storageprime.service
@@ -271,9 +270,22 @@ Description=Flameshot screenshot tool
 PartOf=graphical-session.target
 Requires=tray.target
 X-Restart-Triggers=/nix/store/HASH-flameshot.ini
+## grocerylist-test.service
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecStart=/home/samuelstidham/sites/grocerylist/bin/grocerylist serve --listen 127.0.0.1:8473 --db /home/samuelstidham/.local/share/grocerylist/test.sqlite --core-url http://127.0.0.1:8474
+Restart=on-failure
+RestartSec=2s
+Type=simple
+
+[Unit]
+ConditionPathExists=/home/samuelstidham/sites/grocerylist/bin/grocerylist
+Description=grocerylist test instance for grocerylist.test
 ## home-certs.service
 [Service]
-Environment=PATH=/home/samuelstidham/.nix-profile/bin:/nix/store/HASH-systemd-261.2/bin:/usr/bin:/bin
+Environment=PATH=/home/samuelstidham/.nix-profile/bin:/nix/store/HASH-systemd-262/bin:/usr/bin:/bin
 ExecStart=/nix/store/HASH-home-certs/bin/home-certs
 Type=oneshot
 
@@ -295,8 +307,8 @@ Description=Daily renewal check for *.home.samuelstidham.me
 WantedBy=default.target
 
 [Service]
-ExecReload=/nix/store/HASH-nginx-1.30.5/bin/nginx -c /nix/store/HASH-nginx.conf -p /home/samuelstidham/.local/share/dev-services/nginx -s reload
-ExecStart=/nix/store/HASH-nginx-1.30.5/bin/nginx -c /nix/store/HASH-nginx.conf -p /home/samuelstidham/.local/share/dev-services/nginx
+ExecReload=/nix/store/HASH-nginx-1.30.6/bin/nginx -c /nix/store/HASH-nginx.conf -p /home/samuelstidham/.local/share/dev-services/nginx -s reload
+ExecStart=/nix/store/HASH-nginx-1.30.6/bin/nginx -c /nix/store/HASH-nginx.conf -p /home/samuelstidham/.local/share/dev-services/nginx
 ExecStartPre=/nix/store/HASH-nginx-cert-init.sh
 Restart=on-failure
 RestartSec=5s
@@ -431,14 +443,13 @@ status is-interactive; and begin
 
     # Interactive shell initialisation
     set -gx FZF_CTRL_R_COMMAND ''
-    /nix/store/HASH-fzf-0.74.4/bin/fzf --fish | source
-
-    /nix/store/HASH-zoxide-0.10.0/bin/zoxide init fish | source
+    /nix/store/HASH-fzf-0.74.5/bin/fzf --fish | source
 
     if test "$TERM" != dumb
-        /nix/store/HASH-starship-1.26.0/bin/starship init fish | source
-
+        /nix/store/HASH-starship-1.27.0/bin/starship init fish --print-full-init | source
     end
+
+    /nix/store/HASH-zoxide-0.10.0/bin/zoxide init fish | source
 
     # add completions generated by Home Manager to $fish_complete_path
     begin
@@ -453,7 +464,7 @@ status is-interactive; and begin
     source /nix/store/HASH-atuin-fish-config.fish
 
     if not functions -q __direnv_export_eval
-        /nix/store/HASH-direnv-2.37.1/bin/direnv hook fish | source
+        /nix/store/HASH-direnv-2.38.2/bin/direnv hook fish | source
     end
 
 end
@@ -465,10 +476,10 @@ end
 	hooksPath = "/home/samuelstidham/.config/git/hooks"
 
 [filter "lfs"]
-	clean = "/nix/store/HASH-git-lfs-3.7.1/bin/git-lfs clean -- %f"
-	process = "/nix/store/HASH-git-lfs-3.7.1/bin/git-lfs filter-process"
+	clean = "/nix/store/HASH-git-lfs-3.8.0/bin/git-lfs clean -- %f"
+	process = "/nix/store/HASH-git-lfs-3.8.0/bin/git-lfs filter-process"
 	required = true
-	smudge = "/nix/store/HASH-git-lfs-3.7.1/bin/git-lfs smudge -- %f"
+	smudge = "/nix/store/HASH-git-lfs-3.8.0/bin/git-lfs smudge -- %f"
 
 [gpg]
 	format = "openpgp"

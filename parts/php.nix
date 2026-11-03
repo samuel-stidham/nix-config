@@ -15,7 +15,70 @@
 # all, so the guard belongs here, on the one broken extension. Linux keeps it.
 
 pkgs:
-pkgs.php85.buildEnv {
+let
+  # TEMPORARY, 2026-10-22. Build PHP 8.5.12 from source ahead of nixpkgs.
+  #
+  # 8.5.12 fixes CVE-2026-109618 and CVE-2026-109619. Both are unauthenticated
+  # remote code execution through php-fpm, and nginx exposes php-fpm on
+  # 0.0.0.0:443. nixpkgs master took the bump on 2026-10-21. The flake tracks
+  # nixos-unstable, which still carried 8.5.11 a day later because that branch
+  # waits on the full Hydra test set.
+  #
+  # The obvious fix, pinning the whole flake to the nixos-unstable-small commit
+  # that has 8.5.12, was tried first and reverted. Chromium 155 is not in the
+  # binary cache at that commit, so the switch began compiling Chromium from
+  # source. That is hours of CPU for one PHP patch release.
+  #
+  # Two overrides compose here. overrideAttrs on the buildEnv goes through
+  # phpAttrsOverrides, the hook nixpkgs provides for swapping the interpreter
+  # source. It rebuilds PHP and then every extension against it, so nothing
+  # stays linked to 8.5.11. The hash is the one nixpkgs master records for
+  # php-8.5.12.tar.bz2. The cost is one local compile of PHP and its
+  # extensions, minutes on this machine.
+  #
+  # packageOverrides patches the filter extension's tests. 8.5.12 adds three
+  # out-of-memory regression tests for CVE-2026-109618, and they run `php -n`
+  # without loading the freshly built filter.so, so all three fail and the
+  # whole env refuses to build:
+  #
+  #   filter_input() doesn't reach hard limit [tests/oom_filter_input.phpt]
+  #
+  # nixpkgs master fixed the harness in php-packages.nix on the same day by
+  # appending `-d extension=$PWD/modules/filter.so` to the test command. The
+  # locked nixpkgs predates that, so the same substitution is carried here.
+  # It patches the tests, never the extension.
+  #
+  # SELF RETIRING. The version probe hands back plain pkgs.php85 as soon as
+  # the locked nixpkgs reaches 8.5.12, so this cannot freeze PHP at 8.5.12
+  # and quietly skip later security releases. Delete the whole block once
+  # the probe is true, there is nothing left for it to do.
+  php =
+    if pkgs.lib.versionAtLeast pkgs.php85.version "8.5.12"
+    then pkgs.php85
+    else
+      (pkgs.php85.override {
+        packageOverrides = final: prev: {
+          extensions = prev.extensions // {
+            filter = prev.extensions.filter.overrideAttrs (old: {
+              postConfigure = (old.postConfigure or "") + ''
+                substituteInPlace \
+                  tests/oom_filter_input.phpt \
+                  tests/oom_filter_input_array.phpt \
+                  tests/oom_filter_default_encoded.phpt \
+                  --replace-fail "'-n'," "'-n', '-d', 'extension=$PWD/modules/filter.so',"
+              '';
+            });
+          };
+        };
+      }).overrideAttrs (_: rec {
+        version = "8.5.12";
+        src = pkgs.fetchurl {
+          url = "https://www.php.net/distributions/php-${version}.tar.bz2";
+          hash = "sha256-/7YO3EN87WO1E35JhNs3moERxQBJxxFRDYuVgnfvwag=";
+        };
+      });
+in
+php.buildEnv {
   extensions = { all, enabled }: enabled ++ (with all; [
     apcu memcached redis msgpack
     xdebug
