@@ -61,7 +61,7 @@ gdb-17.2
 gh-2.103.3
 ghc-9.10.3
 ghidra-12.1.4
-ghostty-1.4.0
+ghostty-nvidia-egl-1.4.0
 git-2.56.0
 gitleaks-8.30.1
 git-lfs-3.8.1
@@ -201,6 +201,21 @@ zellij-0.45.1
 zig-0.17.0
 zoxide-0.10.0
 # ===== SYSTEMD USER UNITS =====
+## app-com.mitchellh.ghostty.service
+[Unit]
+Description=Ghostty
+After=graphical-session.target
+After=dbus.socket
+Requires=dbus.socket
+
+[Service]
+Type=notify-reload
+ReloadSignal=SIGUSR2
+BusName=com.mitchellh.ghostty
+ExecStart=/nix/store/HASH-ghostty-nvidia-egl-1.4.0/bin/ghostty --gtk-single-instance=true --initial-window=false
+
+[Install]
+WantedBy=graphical-session.target
 ## btrfs-scrub-storageprime.service
 [Service]
 Environment=PATH=/home/samuelstidham/.nix-profile/bin:/usr/bin:/bin:/usr/sbin:/sbin
