@@ -37,6 +37,47 @@ let
   # PHP 8.5 with a curated extension set, shared with the php-fpm service behind
   # nginx. The full rationale lives in ../parts/php.nix.
   phpWithExt = import ../parts/php.nix pkgs;
+
+  # Go 1.27.4, one patch release AHEAD of nixpkgs. Pinned 2026-11-17.
+  #
+  # WHY. go.dev listed 1.27.4 as the newest stable that day. nixpkgs carried
+  # 1.27.3 as go_1_27 on the lock, nixos-unstable, nixpkgs-unstable and master
+  # alike. Its default `go` was older still, 1.26.10, and that default is what
+  # stood in home.packages before this binding.
+  #
+  # THE OBVIOUS FIX THAT DOES NOT WORK is bumping the nixpkgs lock. Every
+  # branch stops at 1.27.3, so the bump moves the whole profile and still
+  # lands one release short.
+  #
+  # THE SECOND OBVIOUS FIX is an overlay replacing pkgs.go. Every Go package
+  # in the profile would then rebuild from source, lego and yq-go included.
+  # So this binding is local to the module, the same trade the Rust toolchain
+  # below makes. Nothing outside the Go block sees it.
+  #
+  # THE TRADE. This compiler builds from source here, since no binary cache
+  # has it. nixpkgs' own 1.27 recipe and patches are reused unchanged, and
+  # only the version and the source tarball differ. The sha256 is the one
+  # go.dev publishes for go1.27.4.src.tar.gz.
+  #
+  # DROP THIS once nixpkgs' go_1_27 reaches 1.27.4 or later. Put go_1_27 back
+  # in its place and the tools below can return to their cached builds.
+  goPinned = pkgs.go_1_27.overrideAttrs (_: rec {
+    version = "1.27.4";
+    src = pkgs.fetchurl {
+      url = "https://go.dev/dl/go${version}.src.tar.gz";
+      sha256 = "73cfb8571aec0c01177687db87163d46aa20e9779672772891aa17654d9a6099";
+    };
+  });
+
+  # The builder for the four tools that parse or type-check Go source: gopls,
+  # go-tools, gci and impl. Each links the go/types and go/parser of the
+  # compiler that BUILT it. nixpkgs built go-tools, gci and impl with 1.26.10
+  # and gopls with 1.27.3. A tool built by an older Go than the one on PATH
+  # rejects newer modules, and nixpkgs' own gopls recipe records that
+  # breakage. Building all four with goPinned keeps tool and compiler on one
+  # release. The tool versions themselves do not move. All four were already
+  # the newest upstream tags on 2026-11-17, read off proxy.golang.org.
+  buildGoPinned = pkgs.buildGo127Module.override { go = goPinned; };
 in
 {
   home.packages = with pkgs; [
@@ -85,22 +126,29 @@ in
     include-what-you-use    # header hygiene (iwyu), confirmed 0.26
     flawfinder              # pattern-based C/C++ security scanner, confirmed 2.0.20
 
-    # Go (go-projects, wails-projects). Confirmed 1.26.5. Dev tools from ~/go/bin.
-    go
-    gopls
-    delve             # dlv debugger, confirmed 1.27.1
-    golangci-lint     # confirmed 2.13.1
-    gofumpt           # confirmed 0.11.0
-    go-tools          # staticcheck, confirmed 2026.2
-    gosec             # confirmed 2.28.0
-    govulncheck       # confirmed 1.7.0
-    gotests           # confirmed 1.9.0
+    # Go (go-projects, wails-projects). Confirmed 1.27.4 on 2026-11-17. The
+    # compiler is goPinned from the let block above, which explains why it is
+    # not nixpkgs' `go`. Dev tools outside nixpkgs live in ~/go/bin.
+    #
+    # gopls, go-tools, gci and impl are REBUILT with goPinned through
+    # buildGoPinned. The other six stay on nixpkgs' cached builds, and the Go
+    # that built each is stated beside it. The ones built with 1.26.10 are the
+    # ones to rebuild the same way if a 1.27 module ever trips them.
+    goPinned
+    (gopls.override { buildGoLatestModule = buildGoPinned; })  # confirmed 0.24.0
+    delve             # dlv debugger, confirmed 1.27.2, built with go 1.26.10
+    golangci-lint     # confirmed 2.15.0, built with go 1.27.3
+    gofumpt           # confirmed 0.12.0, built with go 1.26.10
+    (go-tools.override { buildGoModule = buildGoPinned; })     # staticcheck, confirmed 2026.2.2
+    gosec             # confirmed 2.30.0, built with go 1.26.10
+    govulncheck       # confirmed 1.9.0, built with go 1.27.3
+    gotests           # confirmed 1.9.0, built with go 1.26.10
     # gci and impl were `go install` binaries in ~/go/bin. Both are in nixpkgs, so
     # they come from the store now and stay reproducible. goplay, glyphs, meteor
     # and nishanths/license are NOT in nixpkgs, so they stay as go installs and are
     # recorded in docs/recorded-packages.txt instead.
-    gci               # confirmed 0.14.0
-    impl              # confirmed 1.5.0
+    (gci.override { buildGoModule = buildGoPinned; })          # confirmed 0.14.0
+    (impl.override { buildGoModule = buildGoPinned; })         # confirmed 1.5.0
 
     # Rust (rust-projects, tauri-projects). rustup usage moves to nixpkgs
     # rustc/cargo. Swap in rust-overlay later if you need pinned channels.
