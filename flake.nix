@@ -27,9 +27,20 @@
     # stack. Run with `nix run .#services`. Root-free, data under ~/.local/share.
     process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
     services-flake.url = "github:juspay/services-flake";
+    # Rust from upstream's own release binaries, so the toolchain can sit on
+    # the newest stable. Added 2026-11-14 for 1.100.0, released 2026-11-12.
+    # nixpkgs could not supply it. The lock, nixos-unstable, nixpkgs-unstable
+    # and master all evaluated rustc to 1.99.0 or 1.99.1 that day, because a
+    # compiler bump rebuilds the world and waits out a staging cycle. This
+    # input ONLY feeds home/languages.nix. Every Rust package nixpkgs builds
+    # keeps the nixpkgs compiler, so nothing falls off the binary cache.
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, nixpkgs-nvidia, flake-parts, home-manager, nixgl, catppuccin, ... }:
+  outputs = inputs@{ self, nixpkgs, nixpkgs-nvidia, flake-parts, home-manager, nixgl, catppuccin, rust-overlay, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" "aarch64-darwin" ];
       imports = [ inputs.process-compose-flake.flakeModule ];
@@ -174,7 +185,9 @@
             pkgs = import nixpkgs {
               inherit system;
               config.allowUnfree = true;
-              overlays = [ bunOverlay ];
+              # rust-overlay only ADDS pkgs.rust-bin. It does not replace
+              # pkgs.rustc, so no nixpkgs package is rebuilt by its presence.
+              overlays = [ bunOverlay rust-overlay.overlays.default ];
             };
             # `self` + `system` let home modules reach the flake's own outputs
             # (home/graphics.nix installs self.legacyPackages.${system}.nixGLNvidia,

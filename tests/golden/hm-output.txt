@@ -16,14 +16,12 @@ bruno-4.3.0
 btop-1.4.8
 bun-1.4.4
 cabal-install-3.16.1.0
-cargo-1.99.0
 ccache-4.14.2
 ccache-4.14.2-man
 check-0.15.2
 clang-22.1.8-nogeneric
 clang-analyzer-21.1.8
 clang-tools-22.1.8
-clippy-1.99.0
 clojure-1.12.6.1673
 cmake-4.4.4
 composer-2.10.3
@@ -158,10 +156,7 @@ restic-0.19.1
 ripgrep-15.2.0
 rsync-3.5.0
 ruby-3.4.11
-rust-analyzer-2026-10-26
-rustc-wrapper-1.99.0
-rustc-wrapper-1.99.0-man
-rustfmt-1.99.0
+rust-default-1.100.0
 rustlings-6.5.0
 safetybox-4.0.0
 samba-4.23.10

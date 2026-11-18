@@ -150,13 +150,32 @@ in
     (gci.override { buildGoModule = buildGoPinned; })          # confirmed 0.14.0
     (impl.override { buildGoModule = buildGoPinned; })         # confirmed 1.5.0
 
-    # Rust (rust-projects, tauri-projects). rustup usage moves to nixpkgs
-    # rustc/cargo. Swap in rust-overlay later if you need pinned channels.
-    rustc
-    cargo
-    rustfmt
-    clippy
-    rust-analyzer
+    # Rust (rust-projects, tauri-projects). ONE toolchain derivation from
+    # rust-overlay REPLACES the five nixpkgs packages that stood here until
+    # 2026-11-14: rustc, cargo, rustfmt, clippy and rust-analyzer. The comment
+    # above them said "swap in rust-overlay later", and this is that swap.
+    #
+    # WHY. Rust 1.100.0 shipped on 2026-11-12 and nixpkgs was still on 1.99.x
+    # on every branch, master included. See the rust-overlay input in
+    # flake.nix. Bumping the nixpkgs lock would have bought 1.99.1 at most.
+    #
+    # THE OBVIOUS FIX THAT DOES NOT WORK is overriding pkgs.rustc to the new
+    # version. Every Rust package in the profile would then rebuild from
+    # source against it, after the compiler itself builds from source.
+    #
+    # THE TRADE. These are upstream's prebuilt binaries, patched to run from
+    # the store, where nixpkgs built its own from source. In return the whole
+    # set moves as one release. rust-analyzer used to be a dated nixpkgs build
+    # (2026-10-26) trailing the compiler. It is now the component shipped with
+    # the same release, and rust-src is the std source it reads for completion.
+    #
+    # stable.latest means the newest stable the LOCKED rust-overlay knows. It
+    # does not float. `nix flake update rust-overlay` moves it, and the golden
+    # in tests/golden/hm-output.txt records the version that resulted.
+    # Confirmed 1.100.0 on 2026-11-14.
+    (rust-bin.stable.latest.default.override {
+      extensions = [ "rust-src" "rust-analyzer" ];
+    })
     # rustlings, the guided Rust exercise set. It was a `cargo install rustlings`
     # living in ~/.cargo/bin. Codified here so it comes from the store. ~/.cargo/bin
     # is on PATH now, but the Nix profile leads it (configure_path.fish), so this
