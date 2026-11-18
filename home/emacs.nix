@@ -36,4 +36,7 @@
   home.file.".config/doom/init.el".source = ../doom/init.el;
   home.file.".config/doom/config.el".source = ../doom/config.el;
   home.file.".config/doom/packages.el".source = ../doom/packages.el;
+  # CLI-only config. It sets the commit scopes the global commit-msg hook
+  # accepts. Emacs never loads it, so no `doom sync` is needed for it.
+  home.file.".config/doom/cli.el".source = ../doom/cli.el;
 }
