@@ -25,7 +25,18 @@ set -x DEFAULT_USER $USER
 # is wrong on Bazzite, inside tmux, over ssh, and in a TTY, because only the
 # terminal knows what it is. The honest fix is to unpin it. That changes the
 # look, so it waits until Sam opts in rather than being forced here.
-set -x TERM xterm-256color
+#
+# INTERACTIVE ONLY since 2026-11-19. The pin used to run in every fish, and that
+# broke Rex's ssh guard in a way nothing reported. ssh runs a `Match exec`
+# command through $SHELL, which is fish here. That fish sourced this file,
+# rewrote TERM, and the guard's test `[ x$TERM = xxterm-rex ]` then saw
+# xterm-256color and never matched. `rex terminfo setup` ended with:
+#   Error: ssh does not send TERM=xterm-256color to hosts without the entry
+# The same command passed under zsh and bash, which is how it was found. A
+# script's fish has no appearance to preserve, so the pin loses nothing there.
+if status is-interactive
+    set -x TERM xterm-256color
+end
 set -x LANG en_US.UTF-8
 set -x EDITOR nvim
 set -x VEDITOR code

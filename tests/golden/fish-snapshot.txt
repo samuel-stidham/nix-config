@@ -167,7 +167,6 @@ SAVVY_HOME /home/samuelstidham/.savvy
 SHLVL
 STARSHIP_CACHE /home/samuelstidham/.cache/starship
 STARSHIP_CONFIG /home/samuelstidham/.config/starship/starship.toml
-TERM xterm-256color
 TEXLIVE_HOME /usr/local/texlive/2026
 USER samuelstidham
 VEDITOR code

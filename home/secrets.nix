@@ -194,6 +194,18 @@ in
     enable = true;
     # We declare exactly the hosts we need, so no implicit Host * defaults.
     enableDefaultConfig = false;
+    # Rex's ssh guard. Rex gives its terminals TERM=xterm-rex, and ssh forwards
+    # TERM to every host. A host without the entry then fails with
+    # "'xterm-rex': unknown terminal type". The guard file sends xterm-256color
+    # to those hosts instead. `rex terminfo setup` writes the guard to
+    # ~/.config/rex/ssh_config and wants to add this Include itself, but this
+    # file is a store symlink, so it refuses:
+    #   ~/.ssh/config was left alone: it is a symbolic link
+    # and `rex terminfo status` stays at "downgrade: not in effect". So the
+    # Include is declared here. ssh ignores an Include whose file is missing, so
+    # this is harmless on a machine where scripts/rex-install.sh has not run.
+    # The path is Rex's, not ours. Rex is NOT a flake input, see that script.
+    includes = [ "${config.xdg.configHome}/rex/ssh_config" ];
     # settings keys are Host patterns, values use raw ssh_config directive names.
     settings = {
       "github.com" = {
