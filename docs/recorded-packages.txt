@@ -9,6 +9,7 @@
 # Format: one `manager:tool` per line, sorted. When a tool later lands in nixpkgs,
 # move it into the Nix modules and delete its line here.
 
+cargo:sanctuary # crates.io sanctuary, the Rust safetybox; feature compatible with safetybox 4.0.3 at 0.1.1, not in nixpkgs
 go:glyphs      # github.com/maaslalani/glyphs, ascii-art generator, not in nixpkgs
 go:goplay      # github.com/haya14busa/goplay, share to the Go playground, not in nixpkgs
 go:license     # github.com/nishanths/license, LICENSE-file generator, not in nixpkgs
