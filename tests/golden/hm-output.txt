@@ -158,7 +158,7 @@ rsync-3.5.0
 ruby-3.4.11
 rust-default-1.100.0
 rustlings-6.5.0
-safetybox-4.0.1
+safetybox-4.0.3
 samba-4.23.10
 samba-4.23.10-man
 sdl2-compat-2.32.74

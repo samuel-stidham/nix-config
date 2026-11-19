@@ -16,7 +16,7 @@
 # Return to buildGoModule once the nixpkgs default Go reaches 1.27.
 pkgs:
 let
-  version = "4.0.1";
+  version = "4.0.3";
 in
 pkgs.buildGo127Module {
   pname = "safetybox";
@@ -26,7 +26,7 @@ pkgs.buildGo127Module {
     owner = "samuel-stidham";
     repo = "safetybox";
     rev = "v${version}";
-    hash = "sha256-s7t+3GtCzN/irS0JNB+4GetGVl0JhA1CvpWBlLSp2qM=";
+    hash = "sha256-D2XpXdIdFWi4NlJCbymBak3U2b3V9wdyp6rABuY+wZM=";
   };
 
   vendorHash = "sha256-aploEP3n2Yf0EQ29Lmwbm4BigYr2EDJuahnqoyRMzZs=";
